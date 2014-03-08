@@ -1034,6 +1034,12 @@ module UnicodeChars = begin
     let another_unicode_char = '\U000007FF'
 end
 
+module GenericType =
+    type 'a MyOption = | MyNone | MySome 'a
+
+    do test "MySome int" (MySome 1 = MySome 1)
+    do test "MySome string" (MySome "a" = MySome "b")
+    do test "MyNone" (MyNone = MyNone)
 
 
 module EscapeChars = begin
