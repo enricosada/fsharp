@@ -1,8 +1,15 @@
 language: objective-c
 
 env:
-  matrix:
+  global:
     - MONO_VERSION="3.2.7"
+  matrix:
+    - FSharpCoreBackVersion=net40
+    - FSharpCoreBackVersion=portable-windows8+net45
+    - FSharpCoreBackVersion=monotouch
+    - FSharpCoreBackVersion=monodroid
+    - FSharpCoreBackVersion=portable-net45+sl5+win8
+
 
 install:
   - wget "http://download.xamarin.com/MonoFrameworkMDK/Macx86/MonoFramework-MDK-${MONO_VERSION}.macos10.xamarin.x86.pkg"
