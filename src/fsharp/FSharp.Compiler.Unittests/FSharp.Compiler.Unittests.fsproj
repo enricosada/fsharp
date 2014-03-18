@@ -38,10 +38,23 @@
     <WarningLevel>3</WarningLevel>
     <DebugSymbols>False</DebugSymbols>
   </PropertyGroup>
+  <Import Project="$(FSharpSourcesRoot)\FSharpSource.targets" />
+  <ItemGroup>
+    <Compile Include="..\FSharp.Core.Unittests\LibraryTestFx.fs">
+      <Link>LibraryTestFx.fs</Link>
+    </Compile>
+    <Compile Include="Driver\file_version_info.fs" />
+    <None Include="packages.config" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\FSharp.Compiler\FSharp.Compiler.fsproj">
       <Name>FSharp.Compiler</Name>
       <Project>{2e4d67b4-522d-4cf7-97e4-ba940f0b18f3}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\FSharp.Core\FSharp.Core.fsproj">
+      <Name>FSharp.Core</Name>
+      <Project>{ded3bbd7-53f4-428a-8c9f-27968e768605}</Project>
       <Private>True</Private>
     </ProjectReference>
     <Reference Include="mscorlib" />
@@ -52,15 +65,5 @@
     <Reference Include="System" />
     <Reference Include="System.Numerics" Condition="'$(TargetFramework)' == 'net40'" />
     <Reference Include="System.Core" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="..\FSharp.Core.Unittests\LibraryTestFx.fs">
-      <Link>LibraryTestFx.fs</Link>
-    </Compile>
-    <Compile Include="Driver\file_version_info.fs" />
-  </ItemGroup>
-  <Import Project="$(FSharpSourcesRoot)\FSharpSource.targets" />
-  <ItemGroup>
-    <None Include="packages.config" />
   </ItemGroup>
 </Project>

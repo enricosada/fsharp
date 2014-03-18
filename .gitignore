@@ -101,3 +101,4 @@ build.ok
 *.vserr
 
 *.userprefs
+*.sln.DotSettings.user
