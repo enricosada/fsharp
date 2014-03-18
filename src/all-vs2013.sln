@@ -30,6 +30,13 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FSharp.Core.Unittests", "fs
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FSharp.Compiler.Unittests", "fsharp\FSharp.Compiler.Unittests\FSharp.Compiler.Unittests.fsproj", "{BBD13579-D8BD-4BD4-BEB1-2D8E3EB87A73}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{5EE10394-7857-4341-8C0F-5EAF9694A121}"
+	ProjectSection(SolutionItems) = preProject
+		..\.nuget\NuGet.Config = ..\.nuget\NuGet.Config
+		..\.nuget\NuGet.exe = ..\.nuget\NuGet.exe
+		..\.nuget\NuGet.targets = ..\.nuget\NuGet.targets
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
