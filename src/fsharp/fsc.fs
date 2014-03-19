@@ -892,6 +892,11 @@ module AttributeHelpers =
         | Some (Attrib(_,_,[ AttribBoolArg(p) ],_,_,_,_)) -> Some (p)
         | _ -> None
 
+    let (|ILVersion|_|) (versionString: string) =
+        try Some(IL.parseILVersion versionString)
+        with e -> 
+            None
+
     // Try to find an AssemblyVersion attribute 
     let TryFindVersionAttribute tcGlobals attrib attribs =
         match TryFindStringAttribute tcGlobals attrib attribs with
@@ -960,6 +965,28 @@ let createSystemNumericsExportList tcGlobals =
         Seq.toList
             
 module MainModuleBuilder = 
+
+    let fileVersion findStringAttr assemblyVersion =
+        match findStringAttr "System.Reflection.AssemblyFileVersionAttribute" with
+        | Some (AttributeHelpers.ILVersion(v)) -> v
+        | Some v -> 
+            //TODO compiler warning
+            assemblyVersion
+        | None -> assemblyVersion
+
+    let productVersion findStringAttr (fileVersion: ILVersionInfo) =
+        match findStringAttr "System.Reflection.AssemblyInformationalVersionAttribute" with
+        | None | Some "" -> let v1,v2,v3,v4 = fileVersion in sprintf "%d.%d.%d.%d" v1 v2 v3 v4
+        | Some v -> v
+
+    let productVersionAsInts (version: string) =
+        let validOrZero v = match System.Int32.TryParse v with | (true, i) -> i | (false, _) -> 0 
+        let pad i = (if i < 0 then 0 else i % ((System.UInt16.MaxValue |> int) + 1)) |> uint16
+        let validParts = version.Split('.') |> Seq.map (validOrZero >> pad) |> Seq.takeWhile ((<>) 0us)
+        match  [0us;0us;0us;0us] |> Seq.append validParts |> Seq.toList with
+        | major :: minor :: build :: rev :: _ -> (major, minor, build, rev)
+        | x -> failwithf "error converting product version '%s' to binary, tried '%A' " version x
+
     let CreateMainModule  
             (tcConfig:TcConfig,tcGlobals,
              pdbfile,assemblyName,outfile,topAttrs,
@@ -1070,30 +1097,29 @@ module MainModuleBuilder =
                          Access=pub; 
                          CustomAttrs=emptyILCustomAttrs } ]
 
+        let assemblyVersion = 
+            match tcConfig.version with
+            | VersionNone -> assemVerFromAttrib
+            | _ -> Some(tcVersion)
+
+        let findAttribute name =
+            AttributeHelpers.TryFindStringAttribute tcGlobals name topAttrs.assemblyAttrs 
+
         //NOTE: the culture string can be turned into a number using this:
         //    sprintf "%04x" (System.Globalization.CultureInfo.GetCultureInfo("en").KeyboardLayoutId )
-        let assemblyVersionResources =
-            let assemblyVersion = 
-                match tcConfig.version with
-                | VersionNone ->assemVerFromAttrib
-                | _ -> Some(tcVersion)
+        let assemblyVersionResources findAttr assemblyVersion =
             match assemblyVersion with 
             | None -> []
             | Some(assemblyVersion) ->
+
                 let FindAttribute key attrib = 
-                    match AttributeHelpers.TryFindStringAttribute tcGlobals attrib topAttrs.assemblyAttrs with
+                    match findAttr attrib with
                     | Some text  -> [(key,text)]
                     | _ -> []
 
-                let fileVersion = 
-                    match AttributeHelpers.TryFindVersionAttribute tcGlobals "System.Reflection.AssemblyFileVersionAttribute" topAttrs.assemblyAttrs with
-                    | Some v -> v
-                    | None -> assemblyVersion
+                let fileVersion = fileVersion findAttr assemblyVersion
 
-                let productVersion = 
-                    match AttributeHelpers.TryFindVersionAttribute tcGlobals "System.Reflection.AssemblyInformationalVersionAttribute" topAttrs.assemblyAttrs with
-                    | Some v -> v
-                    | None -> assemblyVersion
+                let productVersion = productVersion findAttr fileVersion
 
                 let stringFileInfo = 
                      // 000004b0:
@@ -1102,7 +1128,7 @@ module MainModuleBuilder =
                      // see e.g. http://msdn.microsoft.com/en-us/library/aa912040.aspx 0000 is neutral and 04b0(hex)=1252(dec) is the code page.
                       [ ("000004b0", [ yield ("Assembly Version", (let v1,v2,v3,v4 = assemblyVersion in sprintf "%d.%d.%d.%d" v1 v2 v3 v4))
                                        yield ("FileVersion", (let v1,v2,v3,v4 = fileVersion in sprintf "%d.%d.%d.%d" v1 v2 v3 v4))
-                                       yield ("ProductVersion", (let v1,v2,v3,v4 = productVersion in sprintf "%d.%d.%d.%d" v1 v2 v3 v4))
+                                       yield ("ProductVersion", productVersion)
                                        yield! FindAttribute "Comments" "System.Reflection.AssemblyDescriptionAttribute" 
                                        yield! FindAttribute "FileDescription" "System.Reflection.AssemblyTitleAttribute" 
                                        yield! FindAttribute "ProductName" "System.Reflection.AssemblyProductAttribute" 
@@ -1138,7 +1164,7 @@ module MainModuleBuilder =
                     let dwFileType = 0x01 // REVIEW: HARDWIRED
                     let dwFileSubtype = 0x00 // REVIEW: HARDWIRED
                     let lwFileDate = 0x00L // REVIEW: HARDWIRED
-                    (fileVersion,productVersion,dwFileFlagsMask,dwFileFlags,dwFileOS,dwFileType,dwFileSubtype,lwFileDate)
+                    (fileVersion,productVersion |> productVersionAsInts,dwFileFlagsMask,dwFileFlags,dwFileOS,dwFileType,dwFileSubtype,lwFileDate)
 
                 let vsVersionInfoResource = 
                     VersionResourceFormat.VS_VERSION_INFO_RESOURCE(fixedFileInfo,stringFileInfo,varFileInfo)
@@ -1182,7 +1208,7 @@ module MainModuleBuilder =
 #if SILVERLIGHT
             []
 #else
-            [ for av in assemblyVersionResources do
+            [ for av in assemblyVersionResources findAttribute assemblyVersion do
                   yield Lazy.CreateFromValue av
               if not(tcConfig.win32res = "") then
                   yield Lazy.CreateFromValue (FileSystem.ReadAllBytesShim tcConfig.win32res) 

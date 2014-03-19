@@ -40,11 +40,13 @@
   </PropertyGroup>
   <Import Project="$(FSharpSourcesRoot)\FSharpSource.targets" />
   <ItemGroup>
+    <None Include="packages.config" />
     <Compile Include="..\FSharp.Core.Unittests\LibraryTestFx.fs">
       <Link>LibraryTestFx.fs</Link>
     </Compile>
+    <Compile Include="FsAssert.fs" />
     <Compile Include="Driver\file_version_info.fs" />
-    <None Include="packages.config" />
+    <Compile Include="AbsIL\il.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\FSharp.Compiler\FSharp.Compiler.fsproj">
