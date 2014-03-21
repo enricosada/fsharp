@@ -13,6 +13,7 @@
   <ItemGroup Condition=" '$(TargetFramework)' == 'net20' or 
                          '$(TargetFramework)' == 'net40'">
     <ProjectFiles Include="fsharp/Unittests/Unittests.fsproj"/>
+    <ProjectFiles Include="fsharp/FSharp.Compiler.Unittests/FSharp.Compiler.Unittests.fsproj"/>
   </ItemGroup>
 
 
