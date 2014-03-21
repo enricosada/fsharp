@@ -8,7 +8,7 @@ open Microsoft.FSharp.Compiler.Driver
 
 open FsAssert
 
-module ``fsc aa`` =
+module ``fsharp compiler`` =
     open System.IO
     
     open Microsoft.FSharp.Compiler.Driver
