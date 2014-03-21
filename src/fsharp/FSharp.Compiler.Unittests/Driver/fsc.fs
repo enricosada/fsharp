@@ -78,7 +78,7 @@ module ``fsc aa`` =
     let fsc_library args input = fsc ("--target:library" :: args) input
 
     [<Test>] 
-    let ``should warning if blabla`` () = 
+    let ``should compile library without warnings`` () = 
         let code =
             """
                 module test
@@ -91,7 +91,7 @@ module ``fsc aa`` =
 
 
     [<Test>] 
-    let ``should warning if invalid blabla fileversion bla`` () = 
+    let ``should set file version info on generated file`` () = 
         let code =
             """
                 namespace CST.RI.Anshun
@@ -104,9 +104,10 @@ module ``fsc aa`` =
                 [<assembly: AssemblyCompany("Compressed Space Transport")>]
                 [<assembly: AssemblyProduct("CST.RI.Anshun")>]
                 [<assembly: AssemblyCopyright("Copyright © Compressed Space Transport 2380")>]
+                [<assembly: AssemblyTrademark("CST ™")>]
                 [<assembly: AssemblyVersion("12.34.56.78")>]
                 [<assembly: AssemblyFileVersion("99.88.77.66")>]
-                [<assembly: AssemblyInformationalVersion("17.56.2912.2-hotfix (upgrade second chance security)")>]
+                [<assembly: AssemblyInformationalVersion("17.56.2912.14")>]
                 ()
             """
         let r,o = fsc_library [] ("test.fs", code)
@@ -116,9 +117,26 @@ module ``fsc aa`` =
         fv.CompanyName |> Check.areEqual "Compressed Space Transport"
         fv.FileVersion |> Check.areEqual "99.88.77.66"
         (fv.FileMajorPart, fv.FileMinorPart, fv.FileBuildPart, fv.FilePrivatePart) |> Check.areEqual (99,88,77,66)
-        fv.ProductVersion |> Check.areEqual "17.56.2912.2-hotfix (upgrade second chance security)"
-        (fv.ProductMajorPart, fv.ProductMinorPart, fv.ProductBuildPart, fv.ProductPrivatePart) |> Check.areEqual (17,56,2912,0)
+        fv.ProductVersion |> Check.areEqual "17.56.2912.14"
+        (fv.ProductMajorPart, fv.ProductMinorPart, fv.ProductBuildPart, fv.ProductPrivatePart) |> Check.areEqual (17,56,2912,14)
         fv.LegalCopyright |> Check.areEqual "Copyright © Compressed Space Transport 2380"
-        printfn "%A" o.consoleout        
-        printfn "%A" o.warnings        
-        o.warnings |> Check.areEqual ["warning FS2003: An System.Reflection.AssemblyInformationalVersionAttribute specified version '17.56.2912.2-hotfix (upgrade second chance security)', but this value is invalid and has been ignored"]
+        fv.LegalTrademarks |> Check.areEqual "CST ™"
+        o.warnings |> Check.areEqual []
+
+    [<Test>] 
+    let ``should raise warning FS2003 if AssemblyInformationalVersion has invalid version`` () = 
+        let code =
+            """
+                namespace CST.RI.Anshun
+                open System.Reflection
+                [<assembly: AssemblyVersion("4.5.6.7")>]
+                [<assembly: AssemblyInformationalVersion("45.2048.main1.2-hotfix (upgrade Second Chance security)")>]
+                ()
+            """
+        let r,o = fsc_library [] ("test.fs", code)
+        r |> Check.areEqual 0
+        o.outputfile.Exists |> Check.areEqual true
+        let fv = System.Diagnostics.FileVersionInfo.GetVersionInfo(o.outputfile.FullName)
+        fv.ProductVersion |> Check.areEqual "45.2048.main1.2-hotfix (upgrade Second Chance security)"
+        (fv.ProductMajorPart, fv.ProductMinorPart, fv.ProductBuildPart, fv.ProductPrivatePart) |> Check.areEqual (45,2048,0,0)
+        o.warnings |> Check.areEqual ["warning FS2003: An System.Reflection.AssemblyInformationalVersionAttribute specified version '45.2048.main1.2-hotfix (upgrade Second Chance security)', but this value is invalid and has been ignored"]
