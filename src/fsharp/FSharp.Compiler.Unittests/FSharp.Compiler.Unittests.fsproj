@@ -46,6 +46,7 @@
     </Compile>
     <Compile Include="FsAssert.fs" />
     <Compile Include="Driver\file_version_info.fs" />
+    <Compile Include="Driver\fsc.fs" />
     <Compile Include="AbsIL\il.fs" />
   </ItemGroup>
   <ItemGroup>

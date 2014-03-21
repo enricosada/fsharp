@@ -1,19 +1,13 @@
-﻿[<RequireQualifiedAccess>]
-module FsAssert
+﻿module FsAssert
 
 open System
 open Microsoft.FSharp.Core.LanguagePrimitives
 open NUnit.Framework
 
-/// <summary>
-/// Verifies that two values are equal.
-/// If they are not, then an NUnit.Framework.AssertException is thrown.
-/// </summary>
-/// <param name="expected">The expected value.</param>
-/// <param name="actual">The actual value.</param>
-let inline areEqual<'T when 'T : equality> (expected : 'T) (actual : 'T) =
-    let eqConstraint = Is.EqualTo(expected).Using FastGenericEqualityComparer<'T>
-    Assert.That (actual, eqConstraint) |> ignore
+let inline failtest message = Assert.Fail message
+
+let inline failtestf fmt = Printf.kprintf failtest fmt
+
 
 type Recorder () =
     let mutable xs = []
@@ -24,5 +18,37 @@ let inline spy f =
     let recorder = Recorder()
     (recorder, fun ps -> recorder.Record(ps); f ps)
 
-let inline once<'T> (t: 'T) (recorder:Recorder) =
-    areEqual [box t] (recorder.Values)
+
+[<RequireQualifiedAccess>]
+module Expect =
+
+    let inline once check (recorder: Recorder) =
+        match recorder.Values with
+        | [] -> failtest "expected one invocation"
+        | [x] -> 
+            match x with
+            | :? _ as a -> check a
+            | _ -> invalidArg "check" (sprintf "expected function with type %s but was %s" typeof<_>.FullName (x.GetType().FullName))
+        | v -> failtestf "expected one invocation but were %d: %A" v.Length v
+
+
+    let inline never (r: Recorder) = 
+        match r.Values with
+        | [] -> ()
+        | v -> failtestf "no invocations expected but were %d: '%A'" v.Length v
+
+
+
+[<RequireQualifiedAccess>]
+module Check =
+
+    let inline areEqual<'T when 'T : equality> (expected : 'T) (actual : 'T) =
+        let eqConstraint = Is.EqualTo(expected).Using FastGenericEqualityComparer<'T>
+        Assert.That (actual, eqConstraint, (sprintf "Expected '%A' but was '%A'" expected actual))
+
+    let (|Warning|_|) (exn: Exception) =
+        match exn with
+        | :? Microsoft.FSharp.Compiler.ErrorLogger.Error as e -> let n,d = e.Data0 in Some (n,d)
+        | :? Microsoft.FSharp.Compiler.ErrorLogger.NumberedError as e -> let n,d = e.Data0 in Some (n,d)
+        | _ -> None
+

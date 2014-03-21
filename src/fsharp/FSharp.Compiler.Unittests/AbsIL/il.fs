@@ -6,16 +6,17 @@ open NUnit.Framework
 
 open Microsoft.FSharp.Compiler.AbstractIL.IL
 
+open FsAssert
 
 module Platform =
 
     [<Test; Platform("Mono")>] 
     let ``Running on mono`` () =
-        Assert.True(runningOnMono)
+        runningOnMono |> Check.areEqual true
 
     [<Test; Platform("Net")>] 
     let ``Running on DotNET`` () =
-        Assert.False(runningOnMono)
+        runningOnMono |> Check.areEqual false
 
 
 module ``Parse ILVersion`` =
@@ -23,7 +24,7 @@ module ``Parse ILVersion`` =
 
     [<Test>]
     let parseILVersion () =
-        FsAssert.areEqual ((0us,0us,0us,0us)|> toVI) (parseILVersion "0.0.0.0")
-        FsAssert.areEqual ((1us,2us,3us,4us)|> toVI) (parseILVersion "1.2.3.4")
+        parseILVersion "0.0.0.0" |> Check.areEqual ((0us,0us,0us,0us)|> toVI)
+        parseILVersion "1.2.3.4" |> Check.areEqual ((1us,2us,3us,4us)|> toVI)
 
 

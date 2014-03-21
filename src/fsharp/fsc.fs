@@ -903,7 +903,7 @@ module AttributeHelpers =
         | Some versionString ->
              try Some(IL.parseILVersion versionString)
              with e -> 
-                 warning(Error(FSComp.SR.fscBadAssemblyVersion(versionString),Range.rangeStartup));
+                 warning(Error(FSComp.SR.fscBadAssemblyVersion(attrib, versionString),Range.rangeStartup));
                  None
         | _ -> None
 
@@ -966,18 +966,25 @@ let createSystemNumericsExportList tcGlobals =
             
 module MainModuleBuilder = 
 
-    let fileVersion findStringAttr assemblyVersion =
-        match findStringAttr "System.Reflection.AssemblyFileVersionAttribute" with
+    let fileVersion warn findStringAttr assemblyVersion =
+        let attrName = "System.Reflection.AssemblyFileVersionAttribute"
+        match findStringAttr attrName with
+        | None -> assemblyVersion
         | Some (AttributeHelpers.ILVersion(v)) -> v
         | Some v -> 
-            //TODO compiler warning
+            warn(Error(FSComp.SR.fscBadAssemblyVersion(attrName, v),Range.rangeStartup));
+            //TODO compile error like c# compiler?
             assemblyVersion
-        | None -> assemblyVersion
 
-    let productVersion findStringAttr (fileVersion: ILVersionInfo) =
-        match findStringAttr "System.Reflection.AssemblyInformationalVersionAttribute" with
-        | None | Some "" -> let v1,v2,v3,v4 = fileVersion in sprintf "%d.%d.%d.%d" v1 v2 v3 v4
-        | Some v -> v
+    let productVersion warn findStringAttr (fileVersion: ILVersionInfo) =
+        let attrName = "System.Reflection.AssemblyInformationalVersionAttribute"
+        let toDotted (v1,v2,v3,v4) = sprintf "%d.%d.%d.%d" v1 v2 v3 v4
+        match findStringAttr attrName with
+        | None | Some "" -> fileVersion |> toDotted
+        | Some (AttributeHelpers.ILVersion(v)) -> v |> toDotted
+        | Some v -> 
+            warn(Error(FSComp.SR.fscBadAssemblyVersion(attrName, v),Range.rangeStartup));
+            v
 
     let productVersionAsInts (version: string) =
         let validOrZero v = match System.Int32.TryParse v with | (true, i) -> i | (false, _) -> 0 
@@ -1117,9 +1124,9 @@ module MainModuleBuilder =
                     | Some text  -> [(key,text)]
                     | _ -> []
 
-                let fileVersion = fileVersion findAttr assemblyVersion
+                let fileVersion = fileVersion warning findAttr assemblyVersion
 
-                let productVersion = productVersion findAttr fileVersion
+                let productVersion = productVersion warning findAttr fileVersion
 
                 let stringFileInfo = 
                      // 000004b0:
