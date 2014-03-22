@@ -17,7 +17,7 @@ script:
   - xbuild ./src/fsharp-library-unittests-build.proj /p:TargetFramework=net40 /p:Configuration=Release
   - xbuild ./src/fsharp-compiler-unittests-build.proj /p:TargetFramework=net40 /p:Configuration=Release
   - /Library/Frameworks/Mono.framework/Versions/${MONO_VERSION}/bin/nunit-console4 ./lib/release/FSharp.Core.Unittests.dll
-  - mono --runtime=v4.0.30319 ./tools/NUnit.Runners.2.6.3/tools/nunit-console.exe ./lib/release/FSharp.Compiler.Unittests.dll
+  - mono --runtime=v4.0.30319 ./packages/NUnit.Runners.2.6.3/tools/nunit-console.exe ./lib/release/FSharp.Compiler.Unittests.dll
   - (cd tests/projects; ./build.sh)
   - (cd tests/fsharp/core; ./run-all.sh)
 
