@@ -13,6 +13,7 @@ script:
   - make 
   - sudo make install
   - xbuild ./src/fsharp-library-unittests-build.proj /p:TargetFramework=net40 /p:Configuration=Release
+  - xbuild ./src/fsharp-compiler-unittests-build.proj /p:TargetFramework=net40 /p:Configuration=Release
   - /Library/Frameworks/Mono.framework/Versions/${MONO_VERSION}/bin/nunit-console4 ./lib/release/FSharp.Core.Unittests.dll
   - /Library/Frameworks/Mono.framework/Versions/${MONO_VERSION}/bin/nunit-console4 ./lib/release/FSharp.Compiler.Unittests.dll
   - (cd tests/projects; ./build.sh)
