@@ -7,7 +7,7 @@ env:
 install:
   - wget "http://download.xamarin.com/MonoFrameworkMDK/Macx86/MonoFramework-MDK-${MONO_VERSION}.macos10.xamarin.x86.pkg"
   - sudo installer -pkg "MonoFramework-MDK-${MONO_VERSION}.macos10.xamarin.x86.pkg" -target /
-  - mono .nuget/NuGet.exe restore src/all-vs2013.sln
+  - mono .nuget/NuGet.exe restore ./src/all-vs2013.sln
 
 script: 
   - ./autogen.sh  --prefix=/Library/Frameworks/Mono.framework/Versions/${MONO_VERSION}
