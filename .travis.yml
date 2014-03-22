@@ -8,6 +8,7 @@ install:
   - wget "http://download.xamarin.com/MonoFrameworkMDK/Macx86/MonoFramework-MDK-${MONO_VERSION}.macos10.xamarin.x86.pkg"
   - sudo installer -pkg "MonoFramework-MDK-${MONO_VERSION}.macos10.xamarin.x86.pkg" -target /
   - mono .nuget/NuGet.exe restore ./src/all-vs2013.sln
+  - mono .nuget/NuGet.exe install NUnit.Runners -Version 2.6.3 -OutputDirectory packages
 
 script: 
   - ./autogen.sh  --prefix=/Library/Frameworks/Mono.framework/Versions/${MONO_VERSION}
@@ -16,7 +17,7 @@ script:
   - xbuild ./src/fsharp-library-unittests-build.proj /p:TargetFramework=net40 /p:Configuration=Release
   - xbuild ./src/fsharp-compiler-unittests-build.proj /p:TargetFramework=net40 /p:Configuration=Release
   - /Library/Frameworks/Mono.framework/Versions/${MONO_VERSION}/bin/nunit-console4 ./lib/release/FSharp.Core.Unittests.dll
-  - /Library/Frameworks/Mono.framework/Versions/${MONO_VERSION}/bin/nunit-console4 ./lib/release/FSharp.Compiler.Unittests.dll
+  - mono --runtime=v4.0.30319 ./tools/NUnit.Runners.2.6.3/tools/nunit-console.exe ./lib/release/FSharp.Compiler.Unittests.dll
   - (cd tests/projects; ./build.sh)
   - (cd tests/fsharp/core; ./run-all.sh)
 
