@@ -1,0 +1,45 @@
+init:
+  - git config --global core.autocrlf input
+
+clone_depth: 200
+
+#configuration: Release
+
+environment:
+
+  matrix:
+  - TargetFSharpLibraryFramework: net40
+  - TargetFSharpLibraryFramework: net20
+  - TargetFSharpLibraryFramework: portable47
+  #- TargetFSharpLibraryFramework: portable7
+  #- TargetFSharpLibraryFramework: portable78
+  #- TargetFSharpLibraryFramework: portable259
+  #- TargetFSharpLibraryFramework: sl5
+  - TargetFSharpLibraryFramework: net40
+    BuildVSIntegration: true
+
+matrix:
+  fast_finish: true
+
+build_script:
+  - cmd: build.bat
+
+#perl test too slow
+#before_test:
+#  - chocolatey install ActivePerl -version 5.18.2.1801 
+
+#not work
+#before_test:
+#  - '"%ProgramFiles(x86)%\\Microsoft SDKs\\Windows\\v8.0A\\bin\\NETFX 4.0 Tools\\gacutil.exe" /i "C:\\Tools\\NUnit\\bin\\framework\\nunit.framework.dll"'
+
+#unit test ok, but build too slow
+#test_script:
+#  - cd tests && Runtests.cmd Release coreunit
+
+test: off
+
+version: 3.1.1.0.{build}
+
+artifacts:
+  - path: lib\release
+    name: release

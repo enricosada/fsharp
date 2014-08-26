@@ -3,7 +3,7 @@
 @rem               Version 2.0.  See License.txt in the project root for license information.
 @rem ===========================================================================================================
 
-@echo off
+@echo ON
 setlocal
 
 if /i "%1" == "debug" goto :ok
@@ -29,7 +29,7 @@ set NGEN32=%windir%\Microsoft.NET\Framework\v4.0.30319\ngen.exe
 set NGEN64=%windir%\Microsoft.NET\Framework64\v4.0.30319\ngen.exe
 
 rem Disable strong-name validation for F# binaries built from open source that are signed with the microsoft key
-%SN32% -Vr FSharp.Core,b03f5f7f11d50a3a
+%SN32% -Vr FSharp.Core,b03f5f7f11d50a3a 
 %SN32% -Vr FSharp.Build,b03f5f7f11d50a3a
 %SN32% -Vr FSharp.Compiler.Interactive.Settings,b03f5f7f11d50a3a
 %SN32% -Vr FSharp.Compiler.Hosted,b03f5f7f11d50a3a
@@ -68,7 +68,7 @@ if /i "%PROCESSOR_ARCHITECTURE%"=="AMD64" (
 )
 
 rem Only GACing FSharp.Core for now
-%GACUTIL% /if %BINDIR%\FSharp.Core.dll
+%GACUTIL% /if %BINDIR%\FSharp.Core.dll || goto :error
 
 rem NGen fsc, fsi, fsiAnyCpu, and FSharp.Build.dll
 if /i not "%2"=="-ngen" goto :donengen
@@ -85,3 +85,11 @@ if /i "%PROCESSOR_ARCHITECTURE%"=="AMD64" (
 )
 
 :donengen
+
+
+goto :EOF
+
+:error
+echo Failed with error #%ERRORLEVEL%.
+exit /b %ERRORLEVEL%
+
