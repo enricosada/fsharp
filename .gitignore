@@ -58,3 +58,12 @@ tests/projects/Sample_VS2012_FSharp_ConsoleApp_net45_with_resource/Sample_VS2012
 obj
 extras
 ossreadme*.txt
+
+
+# NuGet Packages
+*.nupkg
+# The packages folder can be ignored because of Package Restore
+**/packages/*
+# except build/, which is used as an MSBuild target.
+!**/packages/build/
+

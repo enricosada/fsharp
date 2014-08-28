@@ -43,6 +43,11 @@ echo TargetFSharpLibraryFramework: %TargetFSharpLibraryFramework%
 del /F /S /Q lib\proto
 del /F /S /Q lib\release
 
+::Restore Nuget Packages
+if %FSHARP_REPO%==VISUALFSHARP (
+    ".nuget\NuGet.exe" restore src || goto :error
+)
+
 ::Build
 cd "%REPO_DIR%\src"
 if %FSHARP_REPO%==VISUALFSHARP (
@@ -65,7 +70,7 @@ if "%TargetFSharpLibraryFramework%"=="" (
 %MSBUILD% "%REPO_DIR%\src\fsharp-library-build.proj" /p:TargetFramework=sl5 /p:Configuration=Release
 ) else (
 %MSBUILD% "%REPO_DIR%\src\fsharp-library-build.proj" /p:TargetFramework=%TargetFSharpLibraryFramework% /p:Configuration=Release || goto :error
-REM %MSBUILD% "%REPO_DIR%\src\fsharp-library-unittests-build.proj" /p:TargetFramework=%TargetFSharpLibraryFramework% /p:Configuration=Release || goto :error
+%MSBUILD% "%REPO_DIR%\src\fsharp-library-unittests-build.proj" /p:TargetFramework=%TargetFSharpLibraryFramework% /p:Configuration=Release || goto :error
 )
 
 if %FSHARP_REPO%==VISUALFSHARP (
