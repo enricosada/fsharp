@@ -1,6 +1,9 @@
 @echo on
 ::Env
 
+pushd %~dp0
+SET REPO_DIR=%~dp0
+
 REM
 REM FSHARP_REPO is OPENEDITION or VISUALFSHARP, default OPENEDITION
 REM read FSHARP_REPO value from *last* line of fsharp_repo.txt, or FSHARP_REPO env var if defined
@@ -41,49 +44,46 @@ del /F /S /Q lib\proto
 del /F /S /Q lib\release
 
 ::Build
-pushd src
-set ABS_PATH=%CD%
+cd "%REPO_DIR%\src"
 if %FSHARP_REPO%==VISUALFSHARP (
-    "%X86_PROGRAMFILES%\Microsoft SDKs\Windows\v8.0A\bin\NETFX 4.0 Tools\gacutil.exe" /i "%ABS_PATH%\..\lkg\FSharp-2.0.50726.900\bin\FSharp.Core.dll" || goto :error
+    "%X86_PROGRAMFILES%\Microsoft SDKs\Windows\v8.0A\bin\NETFX 4.0 Tools\gacutil.exe" /i "%REPO_DIR%\lkg\FSharp-2.0.50726.900\bin\FSharp.Core.dll" || goto :error
 )
 
-%MSBUILD% "%ABS_PATH%\fsharp-proto-build.proj" || goto :error
-%MSBUILD% "%ABS_PATH%\fsharp-library-build.proj" /p:TargetFramework=net40 /p:Configuration=Release || goto :error
-%MSBUILD% "%ABS_PATH%\fsharp-compiler-build.proj" /p:TargetFramework=net40 /p:Configuration=Release || goto :error
+%MSBUILD% "%REPO_DIR%\src\fsharp-proto-build.proj" || goto :error
+%MSBUILD% "%REPO_DIR%\src\fsharp-library-build.proj" /p:TargetFramework=net40 /p:Configuration=Release || goto :error
+%MSBUILD% "%REPO_DIR%\src\fsharp-compiler-build.proj" /p:TargetFramework=net40 /p:Configuration=Release || goto :error
 if %FSHARP_REPO%==VISUALFSHARP (
-%MSBUILD% "%ABS_PATH%\fsharp-typeproviders-build.proj" /p:TargetFramework=net40 /p:Configuration=Release || goto :error
+%MSBUILD% "%REPO_DIR%\src\fsharp-typeproviders-build.proj" /p:TargetFramework=net40 /p:Configuration=Release || goto :error
 )
 
 if "%TargetFSharpLibraryFramework%"=="" (
-%MSBUILD% "%ABS_PATH%\fsharp-library-build.proj" /p:TargetFramework=net20 /p:Configuration=Release
-%MSBUILD% "%ABS_PATH%\fsharp-library-build.proj" /p:TargetFramework=portable47 /p:Configuration=Release
-%MSBUILD% "%ABS_PATH%\fsharp-library-build.proj" /p:TargetFramework=portable7 /p:Configuration=Release
-%MSBUILD% "%ABS_PATH%\fsharp-library-build.proj" /p:TargetFramework=portable78 /p:Configuration=Release
-%MSBUILD% "%ABS_PATH%\fsharp-library-build.proj" /p:TargetFramework=portable259 /p:Configuration=Release
-%MSBUILD% "%ABS_PATH%\fsharp-library-build.proj" /p:TargetFramework=sl5 /p:Configuration=Release
+%MSBUILD% "%REPO_DIR%\src\fsharp-library-build.proj" /p:TargetFramework=net20 /p:Configuration=Release
+%MSBUILD% "%REPO_DIR%\src\fsharp-library-build.proj" /p:TargetFramework=portable47 /p:Configuration=Release
+%MSBUILD% "%REPO_DIR%\src\fsharp-library-build.proj" /p:TargetFramework=portable7 /p:Configuration=Release
+%MSBUILD% "%REPO_DIR%\src\fsharp-library-build.proj" /p:TargetFramework=portable78 /p:Configuration=Release
+%MSBUILD% "%REPO_DIR%\src\fsharp-library-build.proj" /p:TargetFramework=portable259 /p:Configuration=Release
+%MSBUILD% "%REPO_DIR%\src\fsharp-library-build.proj" /p:TargetFramework=sl5 /p:Configuration=Release
 ) else (
-%MSBUILD% "%ABS_PATH%\fsharp-library-build.proj" /p:TargetFramework=%TargetFSharpLibraryFramework% /p:Configuration=Release || goto :error
-REM %MSBUILD% "%ABS_PATH%\fsharp-library-unittests-build.proj" /p:TargetFramework=%TargetFSharpLibraryFramework% /p:Configuration=Release || goto :error
+%MSBUILD% "%REPO_DIR%\src\fsharp-library-build.proj" /p:TargetFramework=%TargetFSharpLibraryFramework% /p:Configuration=Release || goto :error
+REM %MSBUILD% "%REPO_DIR%\src\fsharp-library-unittests-build.proj" /p:TargetFramework=%TargetFSharpLibraryFramework% /p:Configuration=Release || goto :error
 )
 
 if %FSHARP_REPO%==VISUALFSHARP (
 	REM Use this script to add the built FSharp.Core to the GAC, add required strong name validation skips
 	REM but dont NGen the compiler and libraries. ( update.cmd release -ngen )
-	call "%ABS_PATH%\update.cmd" Release || goto :error
+	call "%REPO_DIR%\src\update.cmd" Release || goto :error
 )
-
-popd
 
 if not "%BuildVSIntegration%"=="" (
-	pushd vsintegration
-	set ABS_PATH=%CD%
-	%MSBUILD% "%ABS_PATH%\fsharp-vsintegration-build.proj" || goto :error
-	popd
+	cd "%REPO_DIR%\vsintegration"
+	%MSBUILD% "%REPO_DIR%\vsintegration\fsharp-vsintegration-build.proj" || goto :error
 )
 
-goto :EOF
+goto :end
 
 :error
 echo Failed with error #%ERRORLEVEL%.
 exit /b %ERRORLEVEL%
 
+:end
+popd
