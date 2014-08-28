@@ -63,7 +63,7 @@ if "%TargetFSharpLibraryFramework%"=="" (
 %MSBUILD% "%ABS_PATH%\fsharp-library-build.proj" /p:TargetFramework=sl5 /p:Configuration=Release
 ) else (
 %MSBUILD% "%ABS_PATH%\fsharp-library-build.proj" /p:TargetFramework=%TargetFSharpLibraryFramework% /p:Configuration=Release || goto :error
-%MSBUILD% "%ABS_PATH%\fsharp-library-unittests-build.proj" /p:TargetFramework=%TargetFSharpLibraryFramework% /p:Configuration=Release || goto :error
+REM %MSBUILD% "%ABS_PATH%\fsharp-library-unittests-build.proj" /p:TargetFramework=%TargetFSharpLibraryFramework% /p:Configuration=Release || goto :error
 )
 
 if %FSHARP_REPO%==VISUALFSHARP (
