@@ -76,7 +76,8 @@ popd
 
 if not "%BuildVSIntegration%"=="" (
 	pushd vsintegration
-	%MSBUILD% "%CD%\fsharp-vsintegration-build.proj" || goto :error
+	set ABS_PATH=%CD%
+	%MSBUILD% "%ABS_PATH%\fsharp-vsintegration-build.proj" || goto :error
 	popd
 )
 
