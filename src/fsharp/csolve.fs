@@ -1899,7 +1899,9 @@ and private SolveTypSubsumesTypWithReport (csenv:ConstraintSolverEnv) ndeep m tr
 
 and private SolveTypEqualsTypWithReport (csenv:ConstraintSolverEnv) ndeep  m trace ty1 ty2 = 
     TryD (fun () -> SolveTypEqualsTypKeepAbbrevs csenv ndeep m trace ty1 ty2)
-         (fun res -> ErrorD (ErrorFromAddingTypeEquation(csenv.g,csenv.DisplayEnv,ty1,ty2,res,m)))
+         (fun res -> 
+            let info = ConstraintSolverRelatedInformation(Some "add info", m, res)
+            ErrorD (ErrorFromAddingTypeEquation(csenv.g,csenv.DisplayEnv,ty1,ty2,info,m)))
   
 and ArgsMustSubsumeOrConvert 
         (csenv:ConstraintSolverEnv)
