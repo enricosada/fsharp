@@ -1,0 +1,60 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <FSharpSourcesRoot>..\..\src</FSharpSourcesRoot>
+    <ProjectGuid>{C163E892-5BF7-4B59-AA99-B0E8079C67C4}</ProjectGuid>
+  </PropertyGroup>
+  <Import Project="$(FSharpSourcesRoot)\FSharpSource.Settings.targets" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <SchemaVersion>2.0</SchemaVersion>
+    <AllowCrossTargeting>true</AllowCrossTargeting>
+    <ReferenceVsAssemblies>true</ReferenceVsAssemblies>
+    <OutputType>Library</OutputType>
+    <AssemblyName>FSharp.Tests.FSharp</AssemblyName>
+    <Name>SystematicUnitTests</Name>
+    <!-- Prevent compiler from inlining calls to FSharp.Core to improve code coverage accuracy -->
+    <Optimize>false</Optimize>
+    <Tailcalls>false</Tailcalls>
+    </PropertyGroup>
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants);EXTENSIONTYPING</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>3</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>3</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- need full name and SpecificVersion = true in order to convince msbuild to allow this reference when targeting portable47 -->
+    <Reference Include="nunit.framework, Version=2.6.3.13283, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77">
+        <SpecificVersion>true</SpecificVersion>
+    </Reference>
+    <ProjectReference Include="$(FSharpSourcesRoot)\fsharp\FSharp.Core\FSharp.Core.fsproj">
+      <Project>{DED3BBD7-53F4-428A-8C9F-27968E768605}</Project>
+      <Name>FSharp.Core</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="LibraryTestFx.fs" />
+  </ItemGroup>
+  <Import Project="$(FSharpSourcesRoot)\FSharpSource.targets" />
+</Project>
