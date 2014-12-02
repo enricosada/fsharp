@@ -1,0 +1,544 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <FSharpSourcesRoot>..\..\src</FSharpSourcesRoot>
+    <ProjectGuid>{C163E892-5BF7-4B59-AA99-B0E8079C67C4}</ProjectGuid>
+  </PropertyGroup>
+  <Import Project="$(FSharpSourcesRoot)\FSharpSource.Settings.targets" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <SchemaVersion>2.0</SchemaVersion>
+    <AllowCrossTargeting>true</AllowCrossTargeting>
+    <ReferenceVsAssemblies>true</ReferenceVsAssemblies>
+    <OutputType>Library</OutputType>
+    <AssemblyName>FSharp.Tests.FSharp</AssemblyName>
+    <Name>SystematicUnitTests</Name>
+    <!-- Prevent compiler from inlining calls to FSharp.Core to improve code coverage accuracy -->
+    <Optimize>false</Optimize>
+    <Tailcalls>false</Tailcalls>
+  </PropertyGroup>
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants);EXTENSIONTYPING</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>3</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>3</WarningLevel>
+  </PropertyGroup>
+  <Import Project="$(FSharpSourcesRoot)\FSharpSource.targets" />
+  <ItemGroup>
+    <Compile Include="PlatformHelpers.fs" />
+    <Compile Include="Commands.fs" />
+    <Compile Include="FSharpTestSuiteTypes.fs" />
+    <Compile Include="..\config.fs">
+      <Link>config.fs</Link>
+    </Compile>
+    <Compile Include="..\..\src\update.fs">
+      <Link>update.fs</Link>
+    </Compile>
+    <Compile Include="nunitConf.fs" />
+    <Compile Include="single-test-build.fs" />
+    <Compile Include="single-test-run.fs" />
+    <Compile Include="single-neg-test.fs" />
+    <Compile Include="core\_test.fs" />
+    <!-- tests -->
+    <None Include="core\access\build.bat" />
+    <None Include="core\access\run.bat" />
+    <None Include="core\access\test.fsx" />
+    <None Include="core\apporder\build.bat" />
+    <None Include="core\apporder\run.bat" />
+    <None Include="core\apporder\test.fsx" />
+    <None Include="core\array\build.bat" />
+    <None Include="core\array\run.bat" />
+    <None Include="core\array\test.fsx" />
+    <None Include="core\attributes\1" />
+    <None Include="core\attributes\build.bat" />
+    <None Include="core\attributes\cslib.cs" />
+    <None Include="core\attributes\cslib.dll" />
+    <None Include="core\attributes\dont.use.empty.signature" />
+    <None Include="core\attributes\dont.use.generated.signature" />
+    <None Include="core\attributes\dont.use.wrapper.namespace" />
+    <None Include="core\attributes\run.bat" />
+    <None Include="core\attributes\test.fsx" />
+    <None Include="core\attributes\testlib.fs" />
+    <None Include="core\attributes\testlib.fsi" />
+    <None Include="core\comprehensions\build.bat" />
+    <None Include="core\comprehensions\run.bat" />
+    <None Include="core\comprehensions\test-hw.fsx" />
+    <None Include="core\comprehensions\test.fsx" />
+    <None Include="core\control\build.bat" />
+    <None Include="core\control\repeat.bat" />
+    <None Include="core\control\run.bat" />
+    <None Include="core\control\test.fsx" />
+    <None Include="core\controlChamenos\build.bat" />
+    <None Include="core\controlChamenos\run.bat" />
+    <None Include="core\controlChamenos\test.fsx" />
+    <None Include="core\controlMailbox\build.bat" />
+    <None Include="core\controlMailbox\repeat.bat" />
+    <None Include="core\controlMailbox\run.bat" />
+    <None Include="core\controlMailbox\test.fsx" />
+    <None Include="core\controlStackOverflow\build.bat" />
+    <None Include="core\controlStackOverflow\run.bat" />
+    <None Include="core\controlStackOverflow\test.fsx" />
+    <None Include="core\controlWebExt\build.bat" />
+    <None Include="core\controlWebExt\run.bat" />
+    <None Include="core\controlWebExt\test.fsx" />
+    <None Include="core\controlWpf\build.bat" />
+    <None Include="core\controlWpf\dont.pipe.to.stdin" />
+    <None Include="core\controlWpf\run.bat" />
+    <None Include="core\controlWpf\test.fsx" />
+    <None Include="core\csext\build.bat" />
+    <None Include="core\csext\run.bat" />
+    <None Include="core\csext\test.fsx" />
+    <None Include="core\events\build.bat" />
+    <None Include="core\events\run.bat" />
+    <None Include="core\events\test.fs" />
+    <None Include="core\events\testcs.cs" />
+    <None Include="core\forwarders\a.cs" />
+    <None Include="core\forwarders\b.cs" />
+    <None Include="core\forwarders\build.bat" />
+    <None Include="core\forwarders\c.fs" />
+    <None Include="core\forwarders\test.fs" />
+    <None Include="core\fsfromcs\build.bat" />
+    <None Include="core\fsfromcs\CsClient.csproj" />
+    <None Include="core\fsfromcs\lib.ml" />
+    <None Include="core\fsfromcs\run.bat" />
+    <None Include="core\fsfromcs\test.cs" />
+    <None Include="core\fsfromfsviacs\build.bat" />
+    <None Include="core\fsfromfsviacs\lib.ml" />
+    <None Include="core\fsfromfsviacs\lib2.cs" />
+    <None Include="core\fsfromfsviacs\run.bat" />
+    <None Include="core\fsfromfsviacs\test.fsx" />
+    <None Include="core\fsi-reload\build.bat" />
+    <None Include="core\fsi-reload\run.bat" />
+    <None Include="core\fsi-reload\test1.ml" />
+    <None Include="core\fsi-reload\test1a.ml" />
+    <None Include="core\fsi-reload\test1b.ml" />
+    <None Include="core\fsi-shadowcopy\Library1.fs" />
+    <None Include="core\fsi-shadowcopy\run.bat" />
+    <None Include="core\fsi-shadowcopy\test1.fsx" />
+    <None Include="core\fsi-shadowcopy\test2.fsx" />
+    <None Include="core\fsiAndModifiers\build.bat" />
+    <None Include="core\fsiAndModifiers\prepare.fsx" />
+    <None Include="core\fsiAndModifiers\run.bat" />
+    <None Include="core\fsiAndModifiers\test.fsx" />
+    <None Include="core\genericmeasures\build.bat" />
+    <None Include="core\genericmeasures\run.bat" />
+    <None Include="core\genericmeasures\test.fsx" />
+    <None Include="core\hiding\build.bat" />
+    <None Include="core\hiding\client.ml" />
+    <None Include="core\hiding\lib.ml" />
+    <None Include="core\hiding\lib.mli" />
+    <None Include="core\hiding\lib2.ml" />
+    <None Include="core\hiding\lib2.mli" />
+    <None Include="core\hiding\lib3.ml" />
+    <None Include="core\hiding\libv.ml" />
+    <None Include="core\innerpoly\build.bat" />
+    <None Include="core\innerpoly\run.bat" />
+    <None Include="core\innerpoly\test.fsx" />
+    <None Include="core\int32\build.bat" />
+    <None Include="core\int32\run.bat" />
+    <None Include="core\int32\test.fsx" />
+    <None Include="core\internalsvisible\build.bat" />
+    <None Include="core\internalsvisible\key.snk" />
+    <None Include="core\internalsvisible\library.fs" />
+    <None Include="core\internalsvisible\library.fsi" />
+    <None Include="core\internalsvisible\librarycs.cs" />
+    <None Include="core\internalsvisible\main.fs" />
+    <None Include="core\interop\.gitignore" />
+    <None Include="core\interop\build.bat" />
+    <None Include="core\interop\PCL.fs" />
+    <None Include="core\interop\PCL.fsproj" />
+    <None Include="core\interop\run.bat" />
+    <None Include="core\interop\User.fs" />
+    <None Include="core\interop\User.fsproj" />
+    <None Include="core\lazy\build.bat" />
+    <None Include="core\lazy\run.bat" />
+    <None Include="core\lazy\test.fsx" />
+    <None Include="core\letrec\build.bat" />
+    <None Include="core\letrec\run.bat" />
+    <None Include="core\letrec\test.fsx" />
+    <None Include="core\libtest\build.bat" />
+    <None Include="core\libtest\run.bat" />
+    <None Include="core\libtest\test.fsx" />
+    <None Include="core\lift\build.bat" />
+    <None Include="core\lift\run.bat" />
+    <None Include="core\lift\test.fsx" />
+    <None Include="core\load-script\1.fsx" />
+    <None Include="core\load-script\2.fsx" />
+    <None Include="core\load-script\3.fsx" />
+    <None Include="core\load-script\build.bat" />
+    <None Include="core\load-script\FlagCheck.fs" />
+    <None Include="core\load-script\FlagCheck.fsx" />
+    <None Include="core\load-script\load-FlagCheckFs.fsx" />
+    <None Include="core\load-script\multiple-load-1.fsx" />
+    <None Include="core\load-script\multiple-load-2.fsx" />
+    <None Include="core\load-script\out.bsl" />
+    <None Include="core\load-script\pipescr" />
+    <None Include="core\load-script\ProjectDriver.fsx" />
+    <None Include="core\load-script\ProjectFile.fs" />
+    <None Include="core\load-script\script.bat" />
+    <None Include="core\load-script\ThisProject.fsx" />
+    <None Include="core\load-script\usesfsi.fsx" />
+    <None Include="core\longnames\build.bat" />
+    <None Include="core\longnames\dont.use.generated.signature" />
+    <None Include="core\longnames\run.bat" />
+    <None Include="core\longnames\test.fsx" />
+    <None Include="core\map\build.bat" />
+    <None Include="core\map\run.bat" />
+    <None Include="core\map\test.fsx" />
+    <None Include="core\math\lalgebra" />
+    <None Include="core\math\numbers" />
+    <None Include="core\math\numbersVS2008" />
+    <None Include="core\measures\build.bat" />
+    <None Include="core\measures\run.bat" />
+    <None Include="core\measures\test.fsx" />
+    <None Include="core\members\absil.fs" />
+    <None Include="core\members\absil.fsi" />
+    <None Include="core\members\basics" />
+    <None Include="core\members\console" />
+    <None Include="core\members\ctree" />
+    <None Include="core\members\factors" />
+    <None Include="core\members\incremental" />
+    <None Include="core\members\ops" />
+    <None Include="core\members\stephen.ml" />
+    <None Include="core\namespaces\build.bat" />
+    <None Include="core\namespaces\dont.pipe.to.stdin" />
+    <None Include="core\namespaces\dont.run.as.script" />
+    <None Include="core\namespaces\dont.use.empty.signature" />
+    <None Include="core\namespaces\dont.use.generated.signature" />
+    <None Include="core\namespaces\dont.use.wrapper.namespace" />
+    <None Include="core\namespaces\run.bat" />
+    <None Include="core\namespaces\test.fs" />
+    <None Include="core\namespaces\test.fsi" />
+    <None Include="core\nested\build.bat" />
+    <None Include="core\nested\run.bat" />
+    <None Include="core\nested\test.fsx" />
+    <None Include="core\netcore\ConsoleApplication1" />
+    <None Include="core\netcore\netcore.sln" />
+    <None Include="core\netcore\netcore259" />
+    <None Include="core\netcore\netcore7" />
+    <None Include="core\netcore\netcore78" />
+    <None Include="core\netcore\netcoreautomationhelperlibrary" />
+    <None Include="core\netcore\netcorelibrary1" />
+    <None Include="core\parsing\build.bat" />
+    <None Include="core\parsing\crlf.ml" />
+    <None Include="core\parsing\toplet.ml" />
+    <None Include="core\patterns\build.bat" />
+    <None Include="core\patterns\run.bat" />
+    <None Include="core\patterns\test.fsx" />
+    <None Include="core\pinvoke\build.bat" />
+    <None Include="core\pinvoke\test.fsx" />
+    <None Include="core\portable\build.bat" />
+    <None Include="core\portable\ConsoleApplication1" />
+    <None Include="core\portable\portableautomationhelperlibrary" />
+    <None Include="core\portable\portablelibrary1" />
+    <None Include="core\portable\portablelibrary1.sln" />
+    <None Include="core\portable\run.bat" />
+    <None Include="core\printf\build.bat" />
+    <None Include="core\printf\run.bat" />
+    <None Include="core\printf\test.fsx" />
+    <None Include="core\printing\build.bat" />
+    <None Include="core\printing\preludePrintSize1000.fsx" />
+    <None Include="core\printing\preludePrintSize200.fsx" />
+    <None Include="core\printing\preludeShowDeclarationValuesFalse.fsx" />
+    <None Include="core\printing\test.fsx" />
+    <None Include="core\printing\testLoadFile.fsx" />
+    <None Include="core\printing\testLoadFile2.fsx" />
+    <None Include="core\printing\z.output.test.1000.bsl" />
+    <None Include="core\printing\z.output.test.200.bsl" />
+    <None Include="core\printing\z.output.test.default.bsl" />
+    <None Include="core\printing\z.output.test.off.bsl" />
+    <None Include="core\printing\z.output.test.quiet.bsl" />
+    <None Include="core\queriesCustomQueryOps\build.bat" />
+    <None Include="core\queriesCustomQueryOps\negativetest.bsl" />
+    <None Include="core\queriesCustomQueryOps\negativetest.fsx" />
+    <None Include="core\queriesCustomQueryOps\run.bat" />
+    <None Include="core\queriesCustomQueryOps\test.fsx" />
+    <None Include="core\queriesLeafExpressionConvert\build.bat" />
+    <None Include="core\queriesLeafExpressionConvert\run.bat" />
+    <None Include="core\queriesLeafExpressionConvert\test.fsx" />
+    <None Include="core\queriesNullableOperators\build.bat" />
+    <None Include="core\queriesNullableOperators\run.bat" />
+    <None Include="core\queriesNullableOperators\test.fsx" />
+    <None Include="core\queriesOverIEnumerable\build.bat" />
+    <None Include="core\queriesOverIEnumerable\run.bat" />
+    <None Include="core\queriesOverIEnumerable\test.fsx" />
+    <None Include="core\queriesOverIQueryable\build.bat" />
+    <None Include="core\queriesOverIQueryable\run.bat" />
+    <None Include="core\queriesOverIQueryable\test.fsx" />
+    <None Include="core\queriesOverOData\build.bat" />
+    <None Include="core\queriesOverOData\run.bat" />
+    <None Include="core\queriesOverOData\test.fsx" />
+    <None Include="core\quotes\build.bat" />
+    <None Include="core\quotes\cslib.cs" />
+    <None Include="core\quotes\dont.use.empty.signature" />
+    <None Include="core\quotes\run.bat" />
+    <None Include="core\quotes\test.fsx" />
+    <None Include="core\quotesDebugInfo\build.bat" />
+    <None Include="core\quotesDebugInfo\run.bat" />
+    <None Include="core\quotesDebugInfo\test.fsx" />
+    <None Include="core\quotesInMultipleModules\build.bat" />
+    <None Include="core\quotesInMultipleModules\module1.fsx" />
+    <None Include="core\quotesInMultipleModules\module2.fsx" />
+    <None Include="core\quotesInMultipleModules\run.bat" />
+    <None Include="core\reflect\build.bat" />
+    <None Include="core\reflect\dont.pipe.to.stdin" />
+    <None Include="core\reflect\dont.use.empty.signature" />
+    <None Include="core\reflect\dont.use.generated.signature" />
+    <None Include="core\reflect\run.bat" />
+    <None Include="core\reflect\test.fs" />
+    <None Include="core\reflect\test2.fs" />
+    <None Include="core\resources\build.bat" />
+    <None Include="core\resources\chimes.wav" />
+    <None Include="core\resources\Icon1.ico" />
+    <None Include="core\resources\Image1.bmp" />
+    <None Include="core\resources\Resources.resx" />
+    <None Include="core\resources\run.bat" />
+    <None Include="core\resources\test.fs" />
+    <None Include="core\resources\TextFile1.txt" />
+    <None Include="core\seq\build.bat" />
+    <None Include="core\seq\run.bat" />
+    <None Include="core\seq\test.fsx" />
+    <None Include="core\subtype\build.bat" />
+    <None Include="core\subtype\run.bat" />
+    <None Include="core\subtype\test.fsx" />
+    <None Include="core\syntax\build.bat" />
+    <None Include="core\syntax\dont.use.generated.signature" />
+    <None Include="core\syntax\dont.use.wrapper.namespace" />
+    <None Include="core\syntax\run.bat" />
+    <None Include="core\syntax\test.fsx" />
+    <None Include="core\tlr\build.bat" />
+    <None Include="core\tlr\run.bat" />
+    <None Include="core\tlr\test.fsx" />
+    <None Include="core\topinit\app69514.fs" />
+    <None Include="core\topinit\build.bat" />
+    <None Include="core\topinit\flag_deterministic_init1.fs" />
+    <None Include="core\topinit\flag_deterministic_init10.fs" />
+    <None Include="core\topinit\flag_deterministic_init11.fs" />
+    <None Include="core\topinit\flag_deterministic_init12.fs" />
+    <None Include="core\topinit\flag_deterministic_init13.fs" />
+    <None Include="core\topinit\flag_deterministic_init14.fs" />
+    <None Include="core\topinit\flag_deterministic_init15.fs" />
+    <None Include="core\topinit\flag_deterministic_init16.fs" />
+    <None Include="core\topinit\flag_deterministic_init17.fs" />
+    <None Include="core\topinit\flag_deterministic_init18.fs" />
+    <None Include="core\topinit\flag_deterministic_init19.fs" />
+    <None Include="core\topinit\flag_deterministic_init2.fs" />
+    <None Include="core\topinit\flag_deterministic_init20.fs" />
+    <None Include="core\topinit\flag_deterministic_init21.fs" />
+    <None Include="core\topinit\flag_deterministic_init22.fs" />
+    <None Include="core\topinit\flag_deterministic_init23.fs" />
+    <None Include="core\topinit\flag_deterministic_init24.fs" />
+    <None Include="core\topinit\flag_deterministic_init25.fs" />
+    <None Include="core\topinit\flag_deterministic_init26.fs" />
+    <None Include="core\topinit\flag_deterministic_init27.fs" />
+    <None Include="core\topinit\flag_deterministic_init28.fs" />
+    <None Include="core\topinit\flag_deterministic_init29.fs" />
+    <None Include="core\topinit\flag_deterministic_init3.fs" />
+    <None Include="core\topinit\flag_deterministic_init30.fs" />
+    <None Include="core\topinit\flag_deterministic_init31.fs" />
+    <None Include="core\topinit\flag_deterministic_init32.fs" />
+    <None Include="core\topinit\flag_deterministic_init33.fs" />
+    <None Include="core\topinit\flag_deterministic_init34.fs" />
+    <None Include="core\topinit\flag_deterministic_init35.fs" />
+    <None Include="core\topinit\flag_deterministic_init36.fs" />
+    <None Include="core\topinit\flag_deterministic_init37.fs" />
+    <None Include="core\topinit\flag_deterministic_init38.fs" />
+    <None Include="core\topinit\flag_deterministic_init39.fs" />
+    <None Include="core\topinit\flag_deterministic_init4.fs" />
+    <None Include="core\topinit\flag_deterministic_init40.fs" />
+    <None Include="core\topinit\flag_deterministic_init41.fs" />
+    <None Include="core\topinit\flag_deterministic_init42.fs" />
+    <None Include="core\topinit\flag_deterministic_init43.fs" />
+    <None Include="core\topinit\flag_deterministic_init44.fs" />
+    <None Include="core\topinit\flag_deterministic_init45.fs" />
+    <None Include="core\topinit\flag_deterministic_init46.fs" />
+    <None Include="core\topinit\flag_deterministic_init47.fs" />
+    <None Include="core\topinit\flag_deterministic_init48.fs" />
+    <None Include="core\topinit\flag_deterministic_init49.fs" />
+    <None Include="core\topinit\flag_deterministic_init5.fs" />
+    <None Include="core\topinit\flag_deterministic_init50.fs" />
+    <None Include="core\topinit\flag_deterministic_init51.fs" />
+    <None Include="core\topinit\flag_deterministic_init52.fs" />
+    <None Include="core\topinit\flag_deterministic_init53.fs" />
+    <None Include="core\topinit\flag_deterministic_init54.fs" />
+    <None Include="core\topinit\flag_deterministic_init55.fs" />
+    <None Include="core\topinit\flag_deterministic_init56.fs" />
+    <None Include="core\topinit\flag_deterministic_init57.fs" />
+    <None Include="core\topinit\flag_deterministic_init58.fs" />
+    <None Include="core\topinit\flag_deterministic_init59.fs" />
+    <None Include="core\topinit\flag_deterministic_init6.fs" />
+    <None Include="core\topinit\flag_deterministic_init60.fs" />
+    <None Include="core\topinit\flag_deterministic_init61.fs" />
+    <None Include="core\topinit\flag_deterministic_init62.fs" />
+    <None Include="core\topinit\flag_deterministic_init63.fs" />
+    <None Include="core\topinit\flag_deterministic_init64.fs" />
+    <None Include="core\topinit\flag_deterministic_init65.fs" />
+    <None Include="core\topinit\flag_deterministic_init66.fs" />
+    <None Include="core\topinit\flag_deterministic_init67.fs" />
+    <None Include="core\topinit\flag_deterministic_init68.fs" />
+    <None Include="core\topinit\flag_deterministic_init69.fs" />
+    <None Include="core\topinit\flag_deterministic_init7.fs" />
+    <None Include="core\topinit\flag_deterministic_init70.fs" />
+    <None Include="core\topinit\flag_deterministic_init71.fs" />
+    <None Include="core\topinit\flag_deterministic_init72.fs" />
+    <None Include="core\topinit\flag_deterministic_init73.fs" />
+    <None Include="core\topinit\flag_deterministic_init74.fs" />
+    <None Include="core\topinit\flag_deterministic_init75.fs" />
+    <None Include="core\topinit\flag_deterministic_init76.fs" />
+    <None Include="core\topinit\flag_deterministic_init77.fs" />
+    <None Include="core\topinit\flag_deterministic_init78.fs" />
+    <None Include="core\topinit\flag_deterministic_init79.fs" />
+    <None Include="core\topinit\flag_deterministic_init8.fs" />
+    <None Include="core\topinit\flag_deterministic_init80.fs" />
+    <None Include="core\topinit\flag_deterministic_init81.fs" />
+    <None Include="core\topinit\flag_deterministic_init82.fs" />
+    <None Include="core\topinit\flag_deterministic_init83.fs" />
+    <None Include="core\topinit\flag_deterministic_init84.fs" />
+    <None Include="core\topinit\flag_deterministic_init85.fs" />
+    <None Include="core\topinit\flag_deterministic_init9.fs" />
+    <None Include="core\topinit\generate.fsx" />
+    <None Include="core\topinit\lib.ml" />
+    <None Include="core\topinit\lib69514.fs" />
+    <None Include="core\topinit\lib69514.fsi" />
+    <None Include="core\topinit\lib_deterministic_init1.fs" />
+    <None Include="core\topinit\lib_deterministic_init10.fs" />
+    <None Include="core\topinit\lib_deterministic_init11.fs" />
+    <None Include="core\topinit\lib_deterministic_init12.fs" />
+    <None Include="core\topinit\lib_deterministic_init13.fs" />
+    <None Include="core\topinit\lib_deterministic_init14.fs" />
+    <None Include="core\topinit\lib_deterministic_init15.fs" />
+    <None Include="core\topinit\lib_deterministic_init16.fs" />
+    <None Include="core\topinit\lib_deterministic_init17.fs" />
+    <None Include="core\topinit\lib_deterministic_init18.fs" />
+    <None Include="core\topinit\lib_deterministic_init19.fs" />
+    <None Include="core\topinit\lib_deterministic_init2.fs" />
+    <None Include="core\topinit\lib_deterministic_init20.fs" />
+    <None Include="core\topinit\lib_deterministic_init21.fs" />
+    <None Include="core\topinit\lib_deterministic_init22.fs" />
+    <None Include="core\topinit\lib_deterministic_init23.fs" />
+    <None Include="core\topinit\lib_deterministic_init24.fs" />
+    <None Include="core\topinit\lib_deterministic_init25.fs" />
+    <None Include="core\topinit\lib_deterministic_init26.fs" />
+    <None Include="core\topinit\lib_deterministic_init27.fs" />
+    <None Include="core\topinit\lib_deterministic_init28.fs" />
+    <None Include="core\topinit\lib_deterministic_init29.fs" />
+    <None Include="core\topinit\lib_deterministic_init3.fs" />
+    <None Include="core\topinit\lib_deterministic_init30.fs" />
+    <None Include="core\topinit\lib_deterministic_init31.fs" />
+    <None Include="core\topinit\lib_deterministic_init32.fs" />
+    <None Include="core\topinit\lib_deterministic_init33.fs" />
+    <None Include="core\topinit\lib_deterministic_init34.fs" />
+    <None Include="core\topinit\lib_deterministic_init35.fs" />
+    <None Include="core\topinit\lib_deterministic_init36.fs" />
+    <None Include="core\topinit\lib_deterministic_init37.fs" />
+    <None Include="core\topinit\lib_deterministic_init38.fs" />
+    <None Include="core\topinit\lib_deterministic_init39.fs" />
+    <None Include="core\topinit\lib_deterministic_init4.fs" />
+    <None Include="core\topinit\lib_deterministic_init40.fs" />
+    <None Include="core\topinit\lib_deterministic_init41.fs" />
+    <None Include="core\topinit\lib_deterministic_init42.fs" />
+    <None Include="core\topinit\lib_deterministic_init43.fs" />
+    <None Include="core\topinit\lib_deterministic_init44.fs" />
+    <None Include="core\topinit\lib_deterministic_init45.fs" />
+    <None Include="core\topinit\lib_deterministic_init46.fs" />
+    <None Include="core\topinit\lib_deterministic_init47.fs" />
+    <None Include="core\topinit\lib_deterministic_init48.fs" />
+    <None Include="core\topinit\lib_deterministic_init49.fs" />
+    <None Include="core\topinit\lib_deterministic_init5.fs" />
+    <None Include="core\topinit\lib_deterministic_init50.fs" />
+    <None Include="core\topinit\lib_deterministic_init51.fs" />
+    <None Include="core\topinit\lib_deterministic_init52.fs" />
+    <None Include="core\topinit\lib_deterministic_init53.fs" />
+    <None Include="core\topinit\lib_deterministic_init54.fs" />
+    <None Include="core\topinit\lib_deterministic_init55.fs" />
+    <None Include="core\topinit\lib_deterministic_init56.fs" />
+    <None Include="core\topinit\lib_deterministic_init57.fs" />
+    <None Include="core\topinit\lib_deterministic_init58.fs" />
+    <None Include="core\topinit\lib_deterministic_init59.fs" />
+    <None Include="core\topinit\lib_deterministic_init6.fs" />
+    <None Include="core\topinit\lib_deterministic_init60.fs" />
+    <None Include="core\topinit\lib_deterministic_init61.fs" />
+    <None Include="core\topinit\lib_deterministic_init62.fs" />
+    <None Include="core\topinit\lib_deterministic_init63.fs" />
+    <None Include="core\topinit\lib_deterministic_init64.fs" />
+    <None Include="core\topinit\lib_deterministic_init65.fs" />
+    <None Include="core\topinit\lib_deterministic_init66.fs" />
+    <None Include="core\topinit\lib_deterministic_init67.fs" />
+    <None Include="core\topinit\lib_deterministic_init68.fs" />
+    <None Include="core\topinit\lib_deterministic_init69.fs" />
+    <None Include="core\topinit\lib_deterministic_init7.fs" />
+    <None Include="core\topinit\lib_deterministic_init70.fs" />
+    <None Include="core\topinit\lib_deterministic_init71.fs" />
+    <None Include="core\topinit\lib_deterministic_init72.fs" />
+    <None Include="core\topinit\lib_deterministic_init73.fs" />
+    <None Include="core\topinit\lib_deterministic_init74.fs" />
+    <None Include="core\topinit\lib_deterministic_init75.fs" />
+    <None Include="core\topinit\lib_deterministic_init76.fs" />
+    <None Include="core\topinit\lib_deterministic_init77.fs" />
+    <None Include="core\topinit\lib_deterministic_init78.fs" />
+    <None Include="core\topinit\lib_deterministic_init79.fs" />
+    <None Include="core\topinit\lib_deterministic_init8.fs" />
+    <None Include="core\topinit\lib_deterministic_init80.fs" />
+    <None Include="core\topinit\lib_deterministic_init81.fs" />
+    <None Include="core\topinit\lib_deterministic_init82.fs" />
+    <None Include="core\topinit\lib_deterministic_init83.fs" />
+    <None Include="core\topinit\lib_deterministic_init84.fs" />
+    <None Include="core\topinit\lib_deterministic_init85.fs" />
+    <None Include="core\topinit\lib_deterministic_init9.fs" />
+    <None Include="core\topinit\run.bat" />
+    <None Include="core\topinit\static-main.fs" />
+    <None Include="core\topinit\test.cs" />
+    <None Include="core\topinit\test0.fs" />
+    <None Include="core\topinit\test1.fs" />
+    <None Include="core\topinit\test2.fs" />
+    <None Include="core\topinit\test3.fs" />
+    <None Include="core\topinit\test4.fs" />
+    <None Include="core\topinit\test5.fs" />
+    <None Include="core\topinit\test6.fs" />
+    <None Include="core\topinit\test_deterministic_init.fs" />
+    <None Include="core\unicode\build.bat" />
+    <None Include="core\unicode\dont.pipe.to.stdin" />
+    <None Include="core\unicode\kanji-unicode-utf16.fs" />
+    <None Include="core\unicode\kanji-unicode-utf7-codepage-65000.fs" />
+    <None Include="core\unicode\kanji-unicode-utf8-nosig-codepage-65001.fs" />
+    <None Include="core\unicode\kanji-unicode-utf8-withsig-codepage-65001.fs" />
+    <None Include="core\unicode\out.bsl" />
+    <None Include="core\unicode\run.bat" />
+    <None Include="core\unicode\test.fsx" />
+    <None Include="core\unicode\utf8source.ml" />
+    <None Include="core\unitsOfMeasure\build.bat" />
+    <None Include="core\unitsOfMeasure\run.bat" />
+    <None Include="core\unitsOfMeasure\test.fs" />
+    <None Include="core\verify\build.bat" />
+    <None Include="core\verify\run.bat" />
+    <None Include="core\verify\xmlverify.fs" />
+    <!-- end tests -->
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="nunit.framework, Version=2.6.3.13283, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77">
+      <SpecificVersion>true</SpecificVersion>
+    </Reference>
+    <ProjectReference Include="$(FSharpSourcesRoot)\fsharp\FSharp.Core\FSharp.Core.fsproj">
+      <Project>{DED3BBD7-53F4-428A-8C9F-27968E768605}</Project>
+      <Name>FSharp.Core</Name>
+    </ProjectReference>
+    <Reference Include="mscorlib" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+  </ItemGroup>
+</Project>
