@@ -40,6 +40,44 @@ let exec_bat_in workDir path =
     | 0 -> Success
     | err -> ErrorLevel err
 
+
+let exec_bat_in' workDir path input =
+    printfn "%s" path
+    let processInfo = new ProcessStartInfo("cmd.exe", "/c " + path)
+    processInfo.WorkingDirectory <- workDir
+    processInfo.CreateNoWindow <- true
+    processInfo.UseShellExecute <- false
+    // Redirect the output
+    processInfo.RedirectStandardError <- true
+    processInfo.RedirectStandardOutput <- true
+    processInfo.RedirectStandardInput <- true
+
+    let p = new Process()
+    p.StartInfo <- processInfo
+
+    let log (x: DataReceivedEventArgs) = printfn "%s" x.Data
+
+    p.OutputDataReceived.Add log
+    p.ErrorDataReceived.Add log
+
+    p.Start() |> ignore
+    p.BeginOutputReadLine()
+    p.BeginErrorReadLine()
+
+    let inputWriter = p.StandardInput
+    input inputWriter
+
+    p.WaitForExit()
+
+    // Read the streams
+
+    let exitCode = p.ExitCode
+    p.Close()
+
+    match exitCode with
+    | 0 -> Success
+    | err -> ErrorLevel err
+
 let exec_bat path = exec_bat_in (Path.GetDirectoryName(path)) path
     
 
@@ -135,24 +173,10 @@ type FSharpSuite () =
     static member AllPermutations
         with get() = createFSharpTestPermu allPermutation
 
-[<Test>]
-[<TestCaseSource(typeof<FSharpSuite>,"TestCases")>]
-let fsharpTest (dir) =
-    printfn "%s" dir
-    
-    let get_file name = if File.Exists(name) then Some name else None
-    let assertExitCodeZero = function Success -> () | ErrorLevel x -> Assert.AreEqual(0, x)
-
-    let execInDirectory name =
-        Path.Combine(dir, name) |> get_file |> Option.iter (exec_bat >> assertExitCodeZero)
-
-    ["build.bat"; "run.bat"]
-    |> List.iter execInDirectory
-
 let fileExists path = if path |> File.Exists then Some path else None
 
 type BuildResult = OK | Error of int
-type RunResult = OK | Error of (int * string) | Skipped
+type RunResult = OK | Error of (int * string) | Skipped of string
 
 type PROCESSOR_ARCHITECTURE = X86 | IA64 | AMD64 | Unknown of string
     with override this.ToString() = match this with X86 -> "x86" | IA64 -> "IA64" | AMD64 -> "AMD64" | Unknown arc -> arc
@@ -178,16 +202,20 @@ let parseProcessorArchitecture (s: string) =
 let echo = printfn
 
 /// copy /y %source1% tmptest2.ml
-let copy_y source to' = 
-    source |> List.iter (fun s -> File.Copy(s, to', true))
+let copy_y workDir source to' = 
+    source |> List.iter (fun s -> File.Copy(Path.Combine(workDir, s), Path.Combine(workDir, to'), true))
 
 /// echo // empty file  > tmptest2.mli
 let echo_tofile workDir text p = 
     File.WriteAllText(Path.Combine(workDir, p), text)
 
 /// type %source1%  >> tmptest3.ml
-let type_append_tofile source p =
-    ()
+let type_append_tofile workDir source p =
+    let append_tofile f t =
+        let from = Path.Combine(workDir, f)
+        let to' = Path.Combine(workDir, t)
+        File.AppendAllText( from, File.ReadAllText(to'))
+    source |> List.iter (fun s -> append_tofile s p)
 
 type TestConfig = {
     EnvironmentVariables: Map<string,string>
@@ -220,12 +248,6 @@ type TestConfig = {
 and INSTALL_SKU = Clean | DesktopExpress | WebExpress | Ultimate
 
 let peverify config assembly =
-    Success
-
-let fsi config sources =
-    Success
-
-let fsiIn config sources =
     Success
 
 let private env key = 

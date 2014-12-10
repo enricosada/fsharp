@@ -22,7 +22,8 @@ let singleTestRun' cfg testDir =
     //if exist test.fsx (set sources=%sources% test.fsx)
     //if exist test2.fsx (set sources=%sources% test2.fsx)
     let sources =
-        ["testlib"; "test"; "test2"] |> List.collect (fun x -> [".fsi"; ".fs"; ".mli"; ".ml"; ".fsx"] |> List.map ((+) x))
+        ["testlib.fsi";"testlib.fs";"test.mli";"test.ml";"test.fsi";"test.fs";"test2.mli";"test2.ml";"test2.fsi";"test2.fs";"test.fsx";"test2.fsx"]
+        |> List.filter (fun name -> (testDir/name) |> fileExists |> Option.isSome)
 
     //set sourceshw=
     //if exist test-hw.mli (set sourceshw=%sourceshw% test-hw.mli)
@@ -36,7 +37,8 @@ let singleTestRun' cfg testDir =
     //if exist test-hw.fsx (set sourceshw=%sourceshw% test-hw.fsx)
     //if exist test2-hw.fsx (set sourceshw=%sourceshw% test2-hw.fsx)
     let sourceshw =
-        ["test-hw"; "test2-hw"] |> List.collect (fun x -> [".mli"; ".ml"; ".fsi"; ".fs"; ".fsx"] |> List.map ((+) x))
+        ["test-hw.mli";"test-hw.ml";"test2-hw.mli";"test2-hw.ml";"test-hw.fsi";"test-hw.fs";"test2-hw.fsi";"test2-hw.fs";"test-hw.fsx";"test2-hw.fsx"]
+        |> List.filter (fun name -> (testDir/name) |> fileExists |> Option.isSome)
 
     //:START
 
@@ -81,6 +83,26 @@ let singleTestRun' cfg testDir =
         //TODO env args
         exec_bat_in testDir p
 
+    let fsi flags sources =
+        //TODO env args
+        exec_bat_in testDir (sprintf "%s %s%s" cfg.FSI flags (sources |> List.fold (fun s t -> s + " " + t) "") )
+
+    let fsiIn flags sourcex =
+        let inputWriter (writer: StreamWriter) =
+            let pipeFile name =
+                use reader = (testDir/name) |> File.OpenRead
+                use ms = new MemoryStream()
+                reader.CopyTo (ms)
+                ms.Position <- 0L
+                try
+                    ms.CopyTo(writer.BaseStream)
+                with 
+                | :? System.IO.IOException as ex -> //input closed is ok if process is closed
+                    ()
+            sources |> List.iter pipeFile
+
+        exec_bat_in' testDir (sprintf "%s %s%s" cfg.FSI flags (sources |> List.fold (fun s t -> s + " " + t) "") ) inputWriter
+
     let withTestOkFile f =
         //  if exist test.ok (del /f /q test.ok)
         (testDir/"test.ok") |> fileExists |> Option.iter File.Delete
@@ -105,14 +127,14 @@ let singleTestRun' cfg testDir =
         | None -> 
             //  if exist test.ok (del /f /q test.ok)
             //  %CLIX% "%FSI%" %fsi_flags% < %sources% && (
-            let run () = fsiIn cfg sources
+            let run () = fsiIn cfg.fsi_flags sources
             //  dir test.ok > NUL 2>&1 ) || (
             //  @echo FSI_STDIN failed;
             //  set ERRORMSG=%ERRORMSG% FSI_STDIN failed;
             //  )
             run |> withTestOkFile
         // )
-        | Some _ -> Skipped
+        | Some _ -> Skipped "dont.pipe.to.stdin found"
 
     // :FSI_STDIN_OPT
     // @echo do :FSI_STDIN_OPT
@@ -122,14 +144,14 @@ let singleTestRun' cfg testDir =
         | None -> 
             // if exist test.ok (del /f /q test.ok)
             // %CLIX% "%FSI%" %fsi_flags% --optimize < %sources% && (
-            let run () = fsiIn {cfg with fsi_flags = sprintf "%s --optimize" cfg.fsi_flags} sources
+            let run () = fsiIn (sprintf "%s --optimize" cfg.fsi_flags) sources
             // dir test.ok > NUL 2>&1 ) || (
             // @echo FSI_STDIN_OPT failed
             // set ERRORMSG=%ERRORMSG% FSI_STDIN_OPT failed;
             // )
             run |> withTestOkFile
         // )
-        | Some _ -> Skipped
+        | Some _ -> Skipped "dont.pipe.to.stdin found"
 
     // :FSI_STDIN_GUI
     // @echo do :FSI_STDIN_GUI
@@ -139,14 +161,14 @@ let singleTestRun' cfg testDir =
         | None ->
             // if exist test.ok (del /f /q test.ok)
             // %CLIX% "%FSI%" %fsi_flags% --gui < %sources% && (
-            let run () = fsiIn {cfg with fsi_flags = sprintf "%s --gui" cfg.fsi_flags} sources
+            let run () = fsiIn (sprintf "%s --gui" cfg.fsi_flags) sources
             // dir test.ok > NUL 2>&1 ) || (
             // @echo FSI_STDIN_GUI failed;
             // set ERRORMSG=%ERRORMSG% FSI_STDIN_GUI failed;
             // )
             run |> withTestOkFile
         // )
-        | Some _ -> Skipped
+        | Some _ -> Skipped "dont.pipe.to.stdin found"
 
     // :FSI_FILE
     // @echo do :FSI_FILE
@@ -156,14 +178,14 @@ let singleTestRun' cfg testDir =
         | None -> 
             // if exist test.ok (del /f /q test.ok)
             // %CLIX% "%FSI%" %fsi_flags% %sources% && (
-            let run () = fsi cfg sources
+            let run () = fsi cfg.fsi_flags sources
             // dir test.ok > NUL 2>&1 ) || (
             // @echo FSI_FILE failed
             // set ERRORMSG=%ERRORMSG% FSI_FILE failed;
             // )
             run |> withTestOkFile
         // )
-        | Some _ -> Skipped
+        | Some _ -> Skipped "dont.run.as.script found"
 
     // :FSC_BASIC
     // @echo do :FSC_BASIC
@@ -204,7 +226,7 @@ let singleTestRun' cfg testDir =
             run |> withTestOkFile
         //)
         )
-        else Skipped
+        else Skipped "not found test-hw.*"
 
     // :FSC_O3
     // @echo do :FSC_O3
@@ -260,9 +282,9 @@ let singleTestRun' cfg testDir =
                 // )
                 run |> withTestOkFile
             // )
-            | None -> Skipped
+            | None -> Skipped "not found test.ml"
         //)
-        | Some _ -> Skipped
+        | Some _ -> Skipped "dont.use.generated.signature found"
 
     // :EMPTY_SIGNATURE
     // @echo do :EMPTY_SIGNATURE
@@ -282,9 +304,9 @@ let singleTestRun' cfg testDir =
                 // )
                 run |> withTestOkFile
             // )
-            | None -> Skipped
+            | None -> Skipped "test.ml not found"
         //)
-        | Some _ -> Skipped
+        | Some _ -> Skipped "dont.use.empty.signature found"
 
     // :EMPTY_SIGNATURE_OPT
     // @echo do :EMPTY_SIGNATURE_OPT
@@ -304,9 +326,9 @@ let singleTestRun' cfg testDir =
                 // )
                 run |> withTestOkFile
             // )
-            | None -> Skipped
+            | None -> Skipped "test.ml not found"
         //)
-        | Some _ -> Skipped
+        | Some _ -> Skipped "dont.use.empty.signature found"
 
     // :FRENCH
     // @echo do :FRENCH
@@ -347,7 +369,7 @@ let singleTestRun' cfg testDir =
             // )
             run |> withTestOkFile
         //)
-        | Some _ -> Skipped
+        | Some _ -> Skipped "dont.compile.test.as.dll found"
 
     // :WRAPPER_NAMESPACE
     // @echo do :WRAPPER_NAMESPACE
@@ -367,9 +389,9 @@ let singleTestRun' cfg testDir =
                 // )
                 run |> withTestOkFile
             // )
-            | None -> Skipped
+            | None -> Skipped "test.ml not found"
         //)
-        | Some _ -> Skipped
+        | Some _ -> Skipped "dont.use.wrapper.namespace found"
 
     // :WRAPPER_NAMESPACE_OPT
     // @echo do :WRAPPER_NAMESPACE_OPT
@@ -389,9 +411,9 @@ let singleTestRun' cfg testDir =
                 // )
                 run |> withTestOkFile
             // )
-            | None -> Skipped
+            | None -> Skipped "test.ml not found"
         // )
-        | Some _ -> Skipped
+        | Some _ -> Skipped "dont.use.wrapper.namespace found"
 
     let run =  function
         | FSI_FILE -> runFSI_FILE
@@ -431,11 +453,11 @@ let singleTestRun config testDir =
         ()
 
     //:Skip
-    let doneSkipped () =
+    let doneSkipped msg =
         //echo Skipped %~f0
         echo "Skipped %s" testDir
         //exit /b 0
-        ()
+        Assert.Ignore (sprintf "skipped. Reason: %s" msg)
 
     //:Error
     let doneError err msg =
@@ -478,7 +500,7 @@ let singleTestRun config testDir =
 
     let checkRun = function
         | OK -> doneOK ()
-        | Skipped -> doneSkipped ()
+        | Skipped msg -> doneSkipped msg
         | Error (err,msg) -> doneError err msg
     
     (fun p -> tests config p |> checkRun)
