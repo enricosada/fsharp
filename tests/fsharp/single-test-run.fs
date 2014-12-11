@@ -79,45 +79,13 @@ let singleTestRun' cfg testDir =
     //REM =========================================
     //REM THE TESTS
     //REM =========================================
-    let clix p = 
-        //TODO env args
-        exec_bat_in testDir p
 
-    let fsi flags sources =
-        //TODO env args
-        exec_bat_in testDir (sprintf "%s %s%s" cfg.FSI flags (sources |> List.fold (fun s t -> s + " " + t) "") )
+    let { clix = clix; 
+          fsi = fsi; 
+          fsiIn = fsiIn;
+        } = getHelpers cfg testDir
 
-    let fsiIn flags sourcex =
-        let inputWriter (writer: StreamWriter) =
-            let pipeFile name =
-                use reader = (testDir/name) |> File.OpenRead
-                use ms = new MemoryStream()
-                reader.CopyTo (ms)
-                ms.Position <- 0L
-                try
-                    ms.CopyTo(writer.BaseStream)
-                with 
-                | :? System.IO.IOException as ex -> //input closed is ok if process is closed
-                    ()
-            sources |> List.iter pipeFile
-
-        exec_bat_in' testDir (sprintf "%s %s%s" cfg.FSI flags (sources |> List.fold (fun s t -> s + " " + t) "") ) inputWriter
-
-    let withTestOkFile f =
-        //  if exist test.ok (del /f /q test.ok)
-        (testDir/"test.ok") |> fileExists |> Option.iter File.Delete
-        //  %CLIX% "%FSI%" %fsi_flags% < %sources% && (
-        //  dir test.ok > NUL 2>&1 ) || (
-        //  @echo FSI_STDIN failed;
-        //  set ERRORMSG=%ERRORMSG% FSI_STDIN failed;
-        //  )
-        match f () with
-        | ErrorLevel err -> Error (err, sprintf "exit code %i" err)
-        | Success ->
-            match testDir/"test.ok" |> fileExists with
-            | Some _ -> OK
-            | None -> Error (0, sprintf "%s" "exit code 0 but test.ok file doesn't exists")
-        
+    let withTestOkFile = withFileGuard (testDir/"test.ok")
 
     // :FSI_STDIN
     // @echo do :FSI_STDIN

@@ -247,9 +247,6 @@ type TestConfig = {
 }
 and INSTALL_SKU = Clean | DesktopExpress | WebExpress | Ultimate
 
-let peverify config assembly =
-    Success
-
 let private env key = 
     match Environment.GetEnvironmentVariable(key) with
     | null -> None
@@ -258,3 +255,77 @@ let private env key =
 
 //let private envOrDefault key def = match env key with Some x -> x | None -> def
 //let private envOrFail key = match env key with Some x -> x | None -> failwithf "environment variable '%s' required " key
+
+type Commands = {
+    echo_tofile: string -> string -> unit;
+    copy_y: string list -> string -> unit;
+    type_append_tofile: string list -> string -> unit;
+    fsc: string -> string list -> CmdResult;
+    peverify: string -> CmdResult;
+    clix: string -> CmdResult;
+    fsi: string -> string list -> CmdResult;
+    fsiIn: string -> string list -> CmdResult;
+    csc: string -> string list -> CmdResult;
+}
+
+let getHelpers cfg workDir = 
+    let fsc flags srcFiles =
+        //TODO envvars
+        let path = sprintf "%s %s%s" cfg.FSC flags (srcFiles |> List.fold (fun s t -> s + " " + t) "")
+        // "%FSC%" %fsc_flags% --define:COMPILING_WITH_EMPTY_SIGNATURE -o:tmptest2.exe tmptest2.mli tmptest2.ml
+        exec_bat_in workDir path
+
+    let csc flags srcFiles =
+        //TODO envvars
+        let path = sprintf "%s %s%s" cfg.CSC flags (srcFiles |> List.fold (fun s t -> s + " " + t) "")
+        // "%FSC%" %fsc_flags% --define:COMPILING_WITH_EMPTY_SIGNATURE -o:tmptest2.exe tmptest2.mli tmptest2.ml
+        exec_bat_in workDir path
+
+    let clix path = 
+        //TODO env args
+        exec_bat_in workDir path
+
+    let fsi flags sources =
+        //TODO env args
+        exec_bat_in workDir (sprintf "%s %s%s" cfg.FSI flags (sources |> List.fold (fun s t -> s + " " + t) "") )
+
+    let fsiIn flags sources =
+        let inputWriter (writer: StreamWriter) =
+            let pipeFile name =
+                use reader = Path.Combine(workDir,name) |> File.OpenRead
+                use ms = new MemoryStream()
+                reader.CopyTo (ms)
+                ms.Position <- 0L
+                try
+                    ms.CopyTo(writer.BaseStream)
+                with 
+                | :? System.IO.IOException as ex -> //input closed is ok if process is closed
+                    ()
+            sources |> List.iter pipeFile
+
+        exec_bat_in' workDir (sprintf "%s %s%s" cfg.FSI flags (sources |> List.fold (fun s t -> s + " " + t) "") ) inputWriter
+
+    { echo_tofile = echo_tofile workDir;
+      copy_y = copy_y workDir;
+      type_append_tofile = type_append_tofile workDir;
+      fsc = fsc;
+      peverify = (fun s -> Success);
+      clix = clix;
+      fsi = fsi;
+      fsiIn = fsiIn; 
+      csc = csc }
+
+let withFileGuard path f =
+    //  if exist test.ok (del /f /q test.ok)
+    path |> fileExists |> Option.iter File.Delete
+    //  %CLIX% "%FSI%" %fsi_flags% < %sources% && (
+    //  dir test.ok > NUL 2>&1 ) || (
+    //  @echo FSI_STDIN failed;
+    //  set ERRORMSG=%ERRORMSG% FSI_STDIN failed;
+    //  )
+    match f () with
+    | ErrorLevel err -> Error (err, sprintf "exit code %i" err)
+    | Success ->
+        match path |> fileExists with
+        | Some _ -> OK
+        | None -> Error (0, sprintf "exit code 0 but %s file doesn't exists" (Path.GetFileName(path)))

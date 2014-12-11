@@ -7,7 +7,7 @@ open NUnit.Framework
 open All
 open TestConfig
 
-let singleTestBuild config testDir =
+let singleTestBuild cfg testDir =
     //@if "%_echo%"=="" echo off
     //setlocal
     ignore "useless"
@@ -17,7 +17,7 @@ let singleTestBuild config testDir =
     buildOkPath |> fileExists |> Option.iter File.Delete //TODO "/f" -> forza rimozione readonly, "/Q" -> no interactive
 
     //call %~d0%~p0..\config.bat
-    let cfg = config
+    ignore "param"
 
     //if NOT "%FSC:NOTAVAIL=X%" == "%FSC%" (
     //  goto Skip
@@ -27,7 +27,9 @@ let singleTestBuild config testDir =
     //set source1=
     //if exist test.ml (set source1=test.ml)
     //if exist test.fs (set source1=test.fs)
-    let source1 = ["test.ml"; "test.fs"] |> List.filter (fun name -> (testDir/name) |> fileExists |> Option.isSome)
+    let source1 = 
+        ["test.ml"; "test.fs"] 
+        |> List.filter (fun name -> (testDir/name) |> fileExists |> Option.isSome)
 
     //set sources=
     //if exist testlib.fsi (set sources=%sources% testlib.fsi)
@@ -90,16 +92,19 @@ let singleTestBuild config testDir =
     //)
     ignore "permutations useless because build type is an input"
 
-    let cd_echo_tofile = echo_tofile testDir
-    let cd_copy_y = copy_y testDir
-    let cd_type_append_tofile = type_append_tofile testDir
+    let { echo_tofile = echo_tofile; 
+          copy_y = copy_y; 
+          type_append_tofile = type_append_tofile;
+          peverify = peverify;
+          fsc = fsc;
+        } = getHelpers cfg testDir
 
     //:Ok
     let doneOk () =
         //echo Built fsharp %~f0 ok.
         echo "Built fsharp %s ok." testDir
         //echo. > build.ok
-        cd_echo_tofile Environment.NewLine "build.ok"
+        echo_tofile Environment.NewLine "build.ok"
         //endlocal
         //exit /b 0
         ()
@@ -121,12 +126,6 @@ let singleTestBuild config testDir =
 
     let genericErrorMessage = "Test Script Failed (perhaps test did not emit test.ok signal file?)"
 
-    let fsc flags srcFiles =
-        //TODO envvars
-        let path = sprintf "%s %s%s" cfg.FSC flags (srcFiles |> List.fold (fun s t -> s + " " + t) "")
-        // "%FSC%" %fsc_flags% --define:COMPILING_WITH_EMPTY_SIGNATURE -o:tmptest2.exe tmptest2.mli tmptest2.ml
-        exec_bat_in testDir path
-
     //:SETERROR
     //set NonexistentErrorLevel 2> nul
     //goto Error
@@ -141,7 +140,7 @@ let singleTestBuild config testDir =
     let doPeverify cmd = 
         match testDir/"dont.run.peverify" |> fileExists with
         | None ->
-            match peverify cfg cmd with
+            match peverify cmd with
             | Success -> OK
             | ErrorLevel err -> Error (err, "peverify error")
         | Some _ -> Skipped "dont.run.peverify found"
@@ -215,7 +214,7 @@ let singleTestBuild config testDir =
                 //  echo Generating interface file...
                 echo "%s" "Generating interface file..."
                 //  copy /y %source1% tmptest.ml
-                cd_copy_y source1 "tmptest.ml"
+                copy_y source1 "tmptest.ml"
                 //  REM NOTE: use --generate-interface-file since results may be in Unicode
                 //  "%FSC%" %fsc_flags% --sig:tmptest.mli tmptest.ml
                 //  if ERRORLEVEL 1 goto Error
@@ -249,9 +248,9 @@ let singleTestBuild config testDir =
                 // echo Compiling against empty interface file...
                 echo "%s" "Compiling against empty interface file..."
                 // echo // empty file  > tmptest2.mli
-                cd_echo_tofile "// empty file" "tmptest2.mli"
+                echo_tofile "// empty file" "tmptest2.mli"
                 // copy /y %source1% tmptest2.ml
-                cd_copy_y source1 "tmptest2.ml"
+                copy_y source1 "tmptest2.ml"
                 // "%FSC%" %fsc_flags% --define:COMPILING_WITH_EMPTY_SIGNATURE -o:tmptest2.exe tmptest2.mli tmptest2.ml
                 // if ERRORLEVEL 1 goto Error
                 match fsc (sprintf "%s --define:COMPILING_WITH_EMPTY_SIGNATURE -o:tmptest2.exe" cfg.fsc_flags) ["tmptest2.mli";"tmptest2.ml"] with
@@ -278,9 +277,9 @@ let singleTestBuild config testDir =
                 // echo Compiling against empty interface file...
                 echo "%s" "Compiling against empty interface file..."
                 // echo // empty file  > tmptest2.mli
-                cd_echo_tofile "// empty file" "tmptest2.mli"
+                echo_tofile "// empty file" "tmptest2.mli"
                 // copy /y %source1% tmptest2.ml
-                cd_copy_y source1 "tmptest2.ml"
+                copy_y source1 "tmptest2.ml"
                 // "%FSC%" %fsc_flags% --define:COMPILING_WITH_EMPTY_SIGNATURE --optimize -o:tmptest2--optimize.exe tmptest2.mli tmptest2.ml
                 // if ERRORLEVEL 1 goto Error
                 match fsc (sprintf "%s --define:COMPILING_WITH_EMPTY_SIGNATURE --optimize -o:tmptest2--optimize.exe" cfg.fsc_flags) ["tmptest2.mli";"tmptest2.ml"] with
@@ -363,9 +362,9 @@ let singleTestBuild config testDir =
                 // echo Compiling when wrapped in a namespace declaration...
                 echo "%s" "Compiling when wrapped in a namespace declaration..."
                 // echo module TestNamespace.TestModule > tmptest3.ml
-                cd_echo_tofile "module TestNamespace.TestModule" "tmptest3.ml"
+                echo_tofile "module TestNamespace.TestModule" "tmptest3.ml"
                 // type %source1%  >> tmptest3.ml
-                cd_type_append_tofile source1 "tmptest3.ml"
+                type_append_tofile source1 "tmptest3.ml"
                 // "%FSC%" %fsc_flags% -o:tmptest3.exe tmptest3.ml
                 // if ERRORLEVEL 1 goto Error
                 match fsc (sprintf "%s -o:tmptest3.exe" cfg.fsc_flags) ["tmptest3.ml"] with
@@ -391,9 +390,9 @@ let singleTestBuild config testDir =
                 // echo Compiling when wrapped in a namespace declaration...
                 echo "%s" "Compiling when wrapped in a namespace declaration..."
                 // echo module TestNamespace.TestModule > tmptest3.ml
-                cd_echo_tofile "module TestNamespace.TestModule" "tmptest3.ml"
+                echo_tofile "module TestNamespace.TestModule" "tmptest3.ml"
                 // type %source1%  >> tmptest3.ml
-                cd_type_append_tofile source1 "tmptest3.ml"
+                type_append_tofile source1 "tmptest3.ml"
                 // "%FSC%" %fsc_flags% --optimize -o:tmptest3--optimize.exe tmptest3.ml
                 // if ERRORLEVEL 1 goto Error
                 match fsc (sprintf "%s --optimize -o:tmptest3--optimize.exe" cfg.fsc_flags) ["tmptest3.ml"] with

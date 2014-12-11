@@ -38,7 +38,7 @@ let GetFSLibPaths env OSARCH FSCBinPath =
     // REM == Find out OS architecture, no matter what cmd prompt
     // SET OSARCH=%PROCESSOR_ARCHITECTURE%
     // IF NOT "%PROCESSOR_ARCHITEW6432%"=="" SET OSARCH=%PROCESSOR_ARCHITEW6432%
-    ignore (OSARCH, "already define")
+    ignore (OSARCH, "param")
 
     // REM == Find out path to native 'Program Files 32bit', no matter what
     // REM == architecture we are running on and no matter what command
@@ -54,7 +54,7 @@ let GetFSLibPaths env OSARCH FSCBinPath =
         | Unknown os -> failwithf "OSARCH '%s' not supported" os
 
     // REM == Default VS install locations
-    let mutable libs = {
+    let libs = ref {
         // set FSCOREDLLPATH=%X86_PROGRAMFILES%\Reference Assemblies\Microsoft\FSharp\.NETFramework\v4.0\4.3.1.0
         FSCOREDLLPATH = X86_PROGRAMFILES / @"Reference Assemblies\Microsoft\FSharp\.NETFramework\v4.0\4.3.1.0"
         // set FSCOREDLL20PATH=%X86_PROGRAMFILES%\Reference Assemblies\Microsoft\FSharp\.NETFramework\v2.0\2.3.0.0
@@ -70,43 +70,42 @@ let GetFSLibPaths env OSARCH FSCBinPath =
         // set FSDATATPPATH=%X86_PROGRAMFILES%\Reference Assemblies\Microsoft\FSharp\.NETFramework\v4.0\4.3.0.0\Type Providers
         FSDATATPPATH =  X86_PROGRAMFILES / @"Reference Assemblies\Microsoft\FSharp\.NETFramework\v4.0\4.3.0.0\Type Providers"
     }
-    let libsRef = ref libs
 
     let ifExistDllSet relativePath dll found  =
         FSCBinPath |> Option.bind (fun bindir -> let dir = bindir/relativePath in dir/dll |> fileExists |> Option.map (fun _ -> dir)) |> Option.iter found
 
     // REM == Check if using open build instead
     // IF EXIST "%FSCBinPath%\FSharp.Core.dll" set FSCOREDLLPATH=%FSCBinPath%
-    ifExistDllSet "" "FSharp.Core.dll" (fun dir -> libsRef := {!libsRef with FSCOREDLLPATH = dir})
+    ifExistDllSet "" "FSharp.Core.dll" (fun dir -> libs := {!libs with FSCOREDLLPATH = dir})
     // IF EXIST "%FSCBinPath%\..\..\net20\bin\FSharp.Core.dll" set FSCOREDLL20PATH=%FSCBinPath%\..\..\net20\bin
-    ifExistDllSet @"..\..\net20\bin" "FSharp.Core.dll" (fun dir -> libsRef := {!libsRef with FSCOREDLL20PATH = dir})
+    ifExistDllSet @"..\..\net20\bin" "FSharp.Core.dll" (fun dir -> libs := {!libs with FSCOREDLL20PATH = dir})
     // IF EXIST "%FSCBinPath%\..\..\portable47\bin\FSharp.Core.dll" set FSCOREDLLPORTABLEPATH=%FSCBinPath%\..\..\portable47\bin
-    ifExistDllSet @"..\..\portable47\bin" "FSharp.Core.dll" (fun dir -> libsRef := {!libsRef with FSCOREDLLPORTABLEPATH = dir})
+    ifExistDllSet @"..\..\portable47\bin" "FSharp.Core.dll" (fun dir -> libs := {!libs with FSCOREDLLPORTABLEPATH = dir})
     // IF EXIST "%FSCBinPath%\..\..\portable7\bin\FSharp.Core.dll" set FSCOREDLLNETCOREPATH=%FSCBinPath%\..\..\portable7\bin
-    ifExistDllSet @"..\..\portable7\bin" "FSharp.Core.dll" (fun dir -> libsRef := {!libsRef with FSCOREDLLNETCOREPATH = dir})
+    ifExistDllSet @"..\..\portable7\bin" "FSharp.Core.dll" (fun dir -> libs := {!libs with FSCOREDLLNETCOREPATH = dir})
     // IF EXIST "%FSCBinPath%\..\..\portable78\bin\FSharp.Core.dll" set FSCOREDLLNETCORE78PATH=%FSCBinPath%\..\..\portable78\bin
-    ifExistDllSet @"..\..\portable78\bin" "FSharp.Core.dll" (fun dir -> libsRef := {!libsRef with FSCOREDLLNETCORE78PATH = dir})
+    ifExistDllSet @"..\..\portable78\bin" "FSharp.Core.dll" (fun dir -> libs := {!libs with FSCOREDLLNETCORE78PATH = dir})
     // IF EXIST "%FSCBinPath%\..\..\portable259\bin\FSharp.Core.dll" set FSCOREDLLNETCORE259PATH=%FSCBinPath%\..\..\portable259\bin
-    ifExistDllSet @"..\..\portable259\bin" "FSharp.Core.dll" (fun dir -> libsRef := {!libsRef with FSCOREDLLNETCORE259PATH = dir})
+    ifExistDllSet @"..\..\portable259\bin" "FSharp.Core.dll" (fun dir -> libs := {!libs with FSCOREDLLNETCORE259PATH = dir})
     // IF EXIST "%FSCBinPath%\FSharp.Data.TypeProviders.dll" set FSDATATPPATH=%FSCBinPath%
-    ifExistDllSet "FSharp.Data.TypeProviders.dll" "" (fun dir -> libsRef := {!libsRef with FSDATATPPATH = dir})
+    ifExistDllSet "FSharp.Data.TypeProviders.dll" "" (fun dir -> libs := {!libs with FSDATATPPATH = dir})
 
     // set FSCOREDLLPATH=%FSCOREDLLPATH%\FSharp.Core.dll
-    libs <- {libs with FSCOREDLLPATH = libs.FSCOREDLLPATH/"FSharp.Core.dll"}
+    libs := {!libs with FSCOREDLLPATH = (!libs).FSCOREDLLPATH/"FSharp.Core.dll"}
     // set FSCOREDLL20PATH=%FSCOREDLL20PATH%\FSharp.Core.dll
-    libs <- {libs with FSCOREDLL20PATH = libs.FSCOREDLL20PATH/"FSharp.Core.dll"}
+    libs := {!libs with FSCOREDLL20PATH = (!libs).FSCOREDLL20PATH/"FSharp.Core.dll"}
     // set FSCOREDLLPORTABLEPATH=%FSCOREDLLPORTABLEPATH%\FSharp.Core.dll
-    libs <- {libs with FSCOREDLLPORTABLEPATH = libs.FSCOREDLLPORTABLEPATH/"FSharp.Core.dll"}
+    libs := {!libs with FSCOREDLLPORTABLEPATH = (!libs).FSCOREDLLPORTABLEPATH/"FSharp.Core.dll"}
     // set FSCOREDLLNETCOREPATH=%FSCOREDLLNETCOREPATH%\FSharp.Core.dll
-    libs <- {libs with FSCOREDLLNETCOREPATH = libs.FSCOREDLLNETCOREPATH/"FSharp.Core.dll"}
+    libs := {!libs with FSCOREDLLNETCOREPATH = (!libs).FSCOREDLLNETCOREPATH/"FSharp.Core.dll"}
     // set FSCOREDLLNETCORE78PATH=%FSCOREDLLNETCORE78PATH%\FSharp.Core.dll
-    libs <- {libs with FSCOREDLLNETCORE78PATH = libs.FSCOREDLLNETCORE78PATH/"FSharp.Core.dll"}
+    libs := {!libs with FSCOREDLLNETCORE78PATH = (!libs).FSCOREDLLNETCORE78PATH/"FSharp.Core.dll"}
     // set FSCOREDLLNETCORE259PATH=%FSCOREDLLNETCORE259PATH%\FSharp.Core.dll
-    libs <- {libs with FSCOREDLLNETCORE259PATH = libs.FSCOREDLLNETCORE259PATH/"FSharp.Core.dll"}
+    libs := {!libs with FSCOREDLLNETCORE259PATH = (!libs).FSCOREDLLNETCORE259PATH/"FSharp.Core.dll"}
     // set FSDATATPPATH=%FSDATATPPATH%\FSharp.Data.TypeProviders.dll
-    libs <- {libs with FSDATATPPATH = libs.FSDATATPPATH/"FSharp.Data.TypeProviders.dll"}
+    libs := {!libs with FSDATATPPATH = (!libs).FSDATATPPATH/"FSharp.Data.TypeProviders.dll"}
 
-    X86_PROGRAMFILES, libs
+    X86_PROGRAMFILES, !libs
 
 // REM ===
 // REM === Find path to FSC/FSI looking up the registry
