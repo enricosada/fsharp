@@ -14,8 +14,15 @@ type CmdArguments = {
     WorkingDirectory: string;
 }
 
+let getfullpath workDir path =
+    let rooted =
+        if Path.IsPathRooted(path) then path
+        else Path.Combine(workDir, path)
+    rooted |> Path.GetFullPath
+
 let exec' cmdArgs path arguments =
-    let path = Path.GetFullPath(path)
+    let path = path |> getfullpath cmdArgs.WorkingDirectory
+    //TODO gestione errore
     printfn "%s" (sprintf "%s %s" path arguments)
     let processInfo = new ProcessStartInfo(path, arguments)
     processInfo.CreateNoWindow <- true
@@ -150,26 +157,28 @@ let createFSharpTest () =
 
 type Permutation = FSI_FILE | FSI_STDIN | FSI_STDIN_OPT | FSI_STDIN_GUI | FSC_BASIC | FSC_BASIC_64 | FSC_HW | FSC_O3 | GENERATED_SIGNATURE | EMPTY_SIGNATURE | EMPTY_SIGNATURE_OPT | FSC_OPT_MINUS_DEBUG | FSC_OPT_PLUS_DEBUG | FRENCH | SPANISH | AS_DLL | WRAPPER_NAMESPACE | WRAPPER_NAMESPACE_OPT
 
-let createFSharpTestPermu list =
-    let testCaseData (p: Permutation) = 
+let createTestCaseData (categories: string list) (properties: string list) list =
+    let testCaseData (p: Permutation) =
         let name = sprintf "%A" p
-        (new TestCaseData( p ))
-            .SetName(name)
-            .SetCategory("4")
-            .SetDescription("An exception is expected")
-    
+        let tc =
+            (new TestCaseData( p ))
+                .SetName(name)
+                .SetCategory(sprintf "%A" p)
+                .SetDescription("An exception is expected")
+        categories |> List.iter (fun c -> tc.Categories.Add(c) |> ignore)
+        properties |> List.iter (fun p -> tc.Categories.Add(p) |> ignore)
+        tc    
     list
     |> Seq.map testCaseData
 
 let allPermutation = 
-            [ FSI_FILE; FSI_STDIN; FSI_STDIN_OPT; FSI_STDIN_GUI; FSC_BASIC; FSC_HW; FSC_O3; GENERATED_SIGNATURE; EMPTY_SIGNATURE; EMPTY_SIGNATURE_OPT; FSC_OPT_MINUS_DEBUG; FSC_OPT_PLUS_DEBUG; FRENCH; SPANISH; AS_DLL; WRAPPER_NAMESPACE; WRAPPER_NAMESPACE_OPT ]
-
-type FSharpSuite () =
-    static member TestCases
-        with get() = createFSharpTest ()
-
-    static member AllPermutations
-        with get() = createFSharpTestPermu allPermutation
+    [ FSI_FILE; FSI_STDIN; FSI_STDIN_OPT; FSI_STDIN_GUI;
+      FSC_BASIC; FSC_HW; FSC_O3;
+      GENERATED_SIGNATURE; EMPTY_SIGNATURE; EMPTY_SIGNATURE_OPT; 
+      FSC_OPT_MINUS_DEBUG; FSC_OPT_PLUS_DEBUG; 
+      FRENCH; SPANISH;
+      AS_DLL; 
+      WRAPPER_NAMESPACE; WRAPPER_NAMESPACE_OPT ]
 
 let fileExists path = if path |> File.Exists then Some path else None
 
@@ -275,17 +284,15 @@ let getHelpers cfg workDir =
             RedirectInput = input;
         }
 
-    let zipBlank = List.fold (fun s t -> s + " " + t) ""
-        
     let fsc flags srcFiles =
         //TODO envvars
         // "%FSC%" %fsc_flags% --define:COMPILING_WITH_EMPTY_SIGNATURE -o:tmptest2.exe tmptest2.mli tmptest2.ml
-        exec None cfg.FSC (sprintf "%s%s"  flags (srcFiles |> zipBlank))
+        exec None cfg.FSC (sprintf "%s %s"  flags (srcFiles |> Seq.ofList |> String.concat " "))
 
     let csc flags srcFiles =
         //TODO envvars
         // "%FSC%" %fsc_flags% --define:COMPILING_WITH_EMPTY_SIGNATURE -o:tmptest2.exe tmptest2.mli tmptest2.ml
-        exec None cfg.CSC (sprintf "%s%s"  flags (srcFiles |> zipBlank))
+        exec None cfg.CSC (sprintf "%s %s"  flags (srcFiles |> Seq.ofList |> String.concat " "))
 
     let clix =
         //TODO env args
@@ -293,7 +300,7 @@ let getHelpers cfg workDir =
 
     let fsi flags sources =
         //TODO env args
-        exec None cfg.FSI (sprintf "%s%s" flags (sources |> zipBlank))
+        exec None cfg.FSI (sprintf "%s %s" flags (sources |> Seq.ofList |> String.concat " "))
 
     let fsiIn flags sources =
         let inputWriter (writer: StreamWriter) =
@@ -309,7 +316,7 @@ let getHelpers cfg workDir =
                     ()
             sources |> List.iter pipeFile
 
-        exec (Some inputWriter) cfg.FSI (sprintf "%s%s" flags (sources |> zipBlank))
+        exec (Some inputWriter) cfg.FSI (sprintf "%s %s" flags (sources |> Seq.ofList |> String.concat " "))
 
     let peverify path = 
         //TODO env args
