@@ -160,7 +160,7 @@ let singleTestBuild cfg testDir =
             //    "%PEVERIFY%" test.exe
             //    @if ERRORLEVEL 1 goto Error
             //)
-            match doPeverify "text.exe" with OK | Skipped _ -> OK | Error x -> Error x
+            match doPeverify "test.exe" with OK | Skipped _ -> OK | Error x -> Error x
 
     let doBasic64 () =
         // "%FSC%" %fsc_flags% --define:BASIC_TEST --platform:x64 -o:testX64.exe -g %sources%
