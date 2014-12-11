@@ -523,9 +523,21 @@ let logConfig (cfg: TestConfig) =
     echo "---------------------------------------------------------------"
 
 let getConfig = lazy (
-    System.Environment.GetEnvironmentVariables () 
-    |> Seq.cast<System.Collections.DictionaryEntry>
-    |> Seq.map (fun d -> d.Key :?> string, d.Value :?> string)
-    |> Map.ofSeq
+    let envVars = 
+        System.Environment.GetEnvironmentVariables () 
+        |> Seq.cast<System.Collections.DictionaryEntry>
+        |> Seq.map (fun d -> d.Key :?> string, d.Value :?> string)
+        |> Map.ofSeq
+
+    let defaults key defaultValue map =
+        if map |> Map.containsKey key 
+        then map 
+        else map |> Map.add key defaultValue
+
+    let FLAVOR = "Debug"
+    let FSCBinPath = Path.Combine(__SOURCE_DIRECTORY__, "..", FLAVOR, "net40", "bin")
+
+    envVars
+    |> defaults "FSCBinPath" FSCBinPath
     |> config
 )

@@ -160,7 +160,7 @@ let singleTestRun' cfg testDir =
     let runFSC_BASIC () =
         // if exist test.ok (del /f /q test.ok)
         // %CLIX% .\test.exe && (
-        let run () = clix @".\test.exe"
+        let run () = clix @".\test.exe" ""
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :FSC_BASIC failed
         // set ERRORMSG=%ERRORMSG% FSC_BASIC failed;
@@ -172,7 +172,7 @@ let singleTestRun' cfg testDir =
     let runFSC_BASIC_64 () =
         // if exist test.ok (del /f /q test.ok)
         // %CLIX% .\testX64.exe && (
-        let run () = clix @".\testX64.exe"
+        let run () = clix @".\testX64.exe" ""
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :FSC_BASIC_64 failed
         // set ERRORMSG=%ERRORMSG% FSC_BASIC_64 failed;
@@ -186,7 +186,7 @@ let singleTestRun' cfg testDir =
         if Directory.EnumerateFiles(testDir, "test-hw.*") |> Seq.tryPick fileExists |> Option.isSome then (
             // if exist test.ok (del /f /q test.ok)
             // %CLIX% .\test-hw.exe && (
-            let run () = clix @".\test-hw.exe"
+            let run () = clix @".\test-hw.exe" ""
             // dir test.ok > NUL 2>&1 ) || (
             // @echo  :FSC_HW failed
             // set ERRORMSG=%ERRORMSG% FSC_HW failed;
@@ -201,7 +201,7 @@ let singleTestRun' cfg testDir =
     let runFSC_O3 () =
         // if exist test.ok (del /f /q test.ok)
         // %CLIX% .\test--optimize.exe && (
-        let run () = clix @".\test--optimize.exe"
+        let run () = clix @".\test--optimize.exe" ""
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :FSC_O3 failed
         // set ERRORMSG=%ERRORMSG% FSC_03 failed;
@@ -213,7 +213,7 @@ let singleTestRun' cfg testDir =
     let runFSC_OPT_MINUS_DEBUG () =
         // if exist test.ok (del /f /q test.ok)
         // %CLIX% .\test--optminus--debug.exe && (
-        let run () = clix @".\test--optminus--debug.exe"
+        let run () = clix @".\test--optminus--debug.exe" ""
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :FSC_OPT_MINUS_DEBUG failed
         // set ERRORMSG=%ERRORMSG% FSC_OPT_MINUS_DEBUG failed;
@@ -225,7 +225,7 @@ let singleTestRun' cfg testDir =
     let runFSC_OPT_PLUS_DEBUG () =
         // if exist test.ok (del /f /q test.ok)
         // %CLIX% .\test--optplus--debug.exe && (
-        let run () = clix @".\test--optplus--debug.exe"
+        let run () = clix @".\test--optplus--debug.exe" ""
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :FSC_OPT_PLUS_DEBUG failed
         // set ERRORMSG=%ERRORMSG% FSC_OPT_PLUS_DEBUG failed;
@@ -243,7 +243,7 @@ let singleTestRun' cfg testDir =
             | Some  _ ->
                 // if exist test.ok (del /f /q test.ok)
                 // %CLIX% tmptest1.exe && (
-                let run () = clix @".\tmptest1.exe"
+                let run () = clix @".\tmptest1.exe" ""
                 // dir test.ok > NUL 2>&1 ) || (
                 // @echo :GENERATED_SIGNATURE failed
                 // set ERRORMSG=%ERRORMSG% FSC_GENERATED_SIGNATURE failed;
@@ -265,7 +265,7 @@ let singleTestRun' cfg testDir =
             | Some  _ ->
                 // if exist test.ok (del /f /q test.ok)
                 // %CLIX% tmptest2.exe && (
-                let run () = clix @".\tmptest2.exe"
+                let run () = clix @".\tmptest2.exe" ""
                 // dir test.ok > NUL 2>&1 ) || (
                 // @echo :EMPTY_SIGNATURE failed
                 // set ERRORMSG=%ERRORMSG% FSC_EMPTY_SIGNATURE failed;
@@ -287,7 +287,7 @@ let singleTestRun' cfg testDir =
             | Some  _ ->
                 // if exist test.ok (del /f /q test.ok)
                 // %CLIX% tmptest2--optimize.exe && (
-                let run () = clix @".\tmptest2--optimize.exe"
+                let run () = clix @".\tmptest2--optimize.exe" ""
                 // dir test.ok > NUL 2>&1 ) || (
                 // @echo :EMPTY_SIGNATURE_OPT --optimize failed
                 // set ERRORMSG=%ERRORMSG% EMPTY_SIGNATURE_OPT --optimize failed;
@@ -303,7 +303,7 @@ let singleTestRun' cfg testDir =
     let runFRENCH () =
         // if exist test.ok (del /f /q test.ok)
         // %CLIX% .\test.exe fr-FR && (
-        let run () = clix @".\test.exe fr-FR"
+        let run () = clix @".\test.exe" "fr-FR"
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :FRENCH failed
         // set ERRORMSG=%ERRORMSG% FRENCH failed;
@@ -315,7 +315,7 @@ let singleTestRun' cfg testDir =
     let runSPANISH () =
         // if exist test.ok (del /f /q test.ok)
         // %CLIX% .\test.exe es-ES && (
-        let run () = clix @".\test.exe es-ES"
+        let run () = clix @".\test.exe" "es-ES"
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :SPANISH failed
         // set ERRORMSG=%ERRORMSG% SPANISH failed;
@@ -330,7 +330,7 @@ let singleTestRun' cfg testDir =
         | None ->
             // if exist test.ok (del /f /q test.ok)
             // %CLIX% .\test--optimize-client-of-lib.exe && (
-            let run () = clix @".\test--optimize-client-of-lib.exe"
+            let run () = clix @".\test--optimize-client-of-lib.exe" ""
             // dir test.ok > NUL 2>&1 ) || (
             // @echo :AS_DLL failed
             // set ERRORMSG=%ERRORMSG% AS_DLL failed;
@@ -350,7 +350,7 @@ let singleTestRun' cfg testDir =
             | Some _ ->
                 // if exist test.ok (del /f /q test.ok)
                 // %CLIX% .\tmptest3.exe && (
-                let run () = clix @".\tmptest3.exe"
+                let run () = clix @".\tmptest3.exe" ""
                 // dir test.ok > NUL 2>&1 ) || (
                 // @echo :WRAPPER_NAMESPACE failed
                 // set ERRORMSG=%ERRORMSG% WRAPPER_NAMESPACE failed;
@@ -372,7 +372,7 @@ let singleTestRun' cfg testDir =
             | Some _ ->
                 // if exist test.ok (del /f /q test.ok)
                 // %CLIX% .\tmptest3--optimize.exe && (
-                let run () = clix @".\tmptest3--optimize.exe"
+                let run () = clix @".\tmptest3--optimize.exe" ""
                 // dir test.ok > NUL 2>&1 ) || (
                 // @echo :WRAPPER_NAMESPACE_OPT failed
                 // set ERRORMSG=%ERRORMSG% WRAPPER_NAMESPACE_OPT failed;

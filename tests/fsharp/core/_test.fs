@@ -8,9 +8,6 @@ open TestConfig
 open SingleTestBuild
 open SingleTestRun
 
-type Permutations () =
-    member x.all () = All.allPermutation |> createFSharpTestPermu
-
 let testDir subDir = Path.Combine(__SOURCE_DIRECTORY__, subDir)
 
 let test dirName phases (p: Permutation) =
@@ -19,36 +16,42 @@ let test dirName phases (p: Permutation) =
     phases |> List.iter (fun phase -> phase cfg dir p)
 
 module Access =
+    let permutations = All.allPermutation |> createFSharpTestPermu
 
-    [<Test; TestCaseSource(typeof<Permutations>, "all")>]
+    [<Test; TestCaseSource("permutations")>]
     let access p = 
         p |> test "access" [singleTestBuild; singleTestRun]
 
 module Apporder = 
+    let permutations = All.allPermutation |> createFSharpTestPermu
 
-    [<Test; TestCaseSource(typeof<Permutations>, "all")>]
+    [<Test; TestCaseSource("permutations")>]
     let apporder p = 
         p |> test "apporder" [singleTestBuild; singleTestRun]
 
 module Attributes = 
+    let permutations = All.allPermutation |> createFSharpTestPermu
 
-    [<Test; TestCaseSource(typeof<Permutations>, "all")>]
+    [<Test; TestCaseSource("permutations")>]
     let attributes p = 
         p |> test "attributes" [singleTestBuild; singleTestRun]
 
 module Comprehensions = 
+    let permutations = All.allPermutation |> createFSharpTestPermu
 
-    [<Test; TestCaseSource(typeof<Permutations>, "all")>]
+    [<Test; TestCaseSource("permutations")>]
     let comprehensions p = 
         p |> test "comprehensions" [singleTestBuild; singleTestRun]
 
 module ControlWpf = 
+    let permutations = All.allPermutation |> createFSharpTestPermu
 
-    [<Test; TestCaseSource(typeof<Permutations>, "all")>]
+    [<Test; TestCaseSource("permutations")>]
     let controlWpf p = 
         p |> test "controlWpf" [singleTestBuild; singleTestRun]
 
 module Events = 
+    let permutations = All.allPermutation |> createFSharpTestPermu
 
     let failIfError = function
     | OK -> ()
@@ -91,12 +94,12 @@ module Events =
         // )
         | Ok ->
             // %CLIX% .\testcs.exe
-            match clix @".\testcs.exe" with
+            match clix @".\testcs.exe" "" with
             | ErrorLevel err -> Error (err, "testcs.exe")
             // if ERRORLEVEL 1 goto Error
             | Ok -> OK
 
-    [<Test; TestCaseSource(typeof<Permutations>, "all")>]
+    [<Test; TestCaseSource("permutations")>]
     let events (p: Permutation) = 
         let checkFailure f c d = (f c d) >> failIfError
         p |> test "events" [build |> checkFailure; run |> checkFailure]

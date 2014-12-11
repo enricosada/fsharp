@@ -7,27 +7,52 @@ open NUnit.Framework
 
 type CmdResult = Success | ErrorLevel of int
 
-let exec_bat_in workDir path =
-    printfn "%s" path
-    let processInfo = new ProcessStartInfo("cmd.exe", "/c " + path)
-    processInfo.WorkingDirectory <- workDir
+type CmdArguments = {
+    RedirectOutput: (string -> unit) option;
+    RedirectError: (string -> unit) option;
+    RedirectInput: (StreamWriter -> unit) option;
+    WorkingDirectory: string;
+}
+
+let exec' cmdArgs path arguments =
+    let path = Path.GetFullPath(path)
+    printfn "%s" (sprintf "%s %s" path arguments)
+    let processInfo = new ProcessStartInfo(path, arguments)
     processInfo.CreateNoWindow <- true
     processInfo.UseShellExecute <- false
-    // Redirect the output
-    processInfo.RedirectStandardError <- true
-    processInfo.RedirectStandardOutput <- true
 
     let p = new Process()
     p.StartInfo <- processInfo
 
-    let log (x: DataReceivedEventArgs) = printfn "%s" x.Data
+    p.StartInfo.WorkingDirectory <- cmdArgs.WorkingDirectory
 
-    p.OutputDataReceived.Add log
-    p.ErrorDataReceived.Add log
+    cmdArgs.RedirectOutput
+    |> Option.map (fun f -> (fun (ea: DataReceivedEventArgs) -> ea.Data |> f)) 
+    |> Option.iter (fun newOut ->
+        processInfo.RedirectStandardOutput <- true
+        p.OutputDataReceived.Add newOut
+    )
+
+    cmdArgs.RedirectError 
+    |> Option.map (fun f -> (fun (ea: DataReceivedEventArgs) -> ea.Data |> f)) 
+    |> Option.iter (fun newErr ->
+        processInfo.RedirectStandardError <- true
+        p.ErrorDataReceived.Add newErr
+    )
+
+    cmdArgs.RedirectInput
+    |> Option.iter (fun _ -> p.StartInfo.RedirectStandardInput <- true)
 
     p.Start() |> ignore
-    p.BeginOutputReadLine()
-    p.BeginErrorReadLine()
+    
+    cmdArgs.RedirectOutput |> Option.iter (fun _ -> p.BeginOutputReadLine())
+    cmdArgs.RedirectError |> Option.iter (fun _ -> p.BeginErrorReadLine())
+
+    cmdArgs.RedirectInput
+    |> Option.iter (fun input ->
+        let inputWriter = p.StandardInput
+        input inputWriter
+    )
 
     p.WaitForExit()
 
@@ -40,99 +65,72 @@ let exec_bat_in workDir path =
     | 0 -> Success
     | err -> ErrorLevel err
 
+let cmdExePath = lazy (
+    let systemRoot = System.Environment.GetEnvironmentVariable("SystemRoot")
+    Path.Combine(systemRoot, "system32", "cmd.exe")
+)
+
+let exec_bat_in workDir path =
+    let cmdArgs = {
+        WorkingDirectory = workDir;
+        RedirectOutput = Some (printfn "%s");
+        RedirectError = Some (printfn "%s");
+        RedirectInput = None;
+    }
+    exec' cmdArgs (cmdExePath.Value) (sprintf "/c %s" path)
 
 let exec_bat_in' workDir path input =
-    printfn "%s" path
-    let processInfo = new ProcessStartInfo("cmd.exe", "/c " + path)
-    processInfo.WorkingDirectory <- workDir
-    processInfo.CreateNoWindow <- true
-    processInfo.UseShellExecute <- false
-    // Redirect the output
-    processInfo.RedirectStandardError <- true
-    processInfo.RedirectStandardOutput <- true
-    processInfo.RedirectStandardInput <- true
-
-    let p = new Process()
-    p.StartInfo <- processInfo
-
-    let log (x: DataReceivedEventArgs) = printfn "%s" x.Data
-
-    p.OutputDataReceived.Add log
-    p.ErrorDataReceived.Add log
-
-    p.Start() |> ignore
-    p.BeginOutputReadLine()
-    p.BeginErrorReadLine()
-
-    let inputWriter = p.StandardInput
-    input inputWriter
-
-    p.WaitForExit()
-
-    // Read the streams
-
-    let exitCode = p.ExitCode
-    p.Close()
-
-    match exitCode with
-    | 0 -> Success
-    | err -> ErrorLevel err
+    let cmdArgs = {
+        WorkingDirectory = workDir;
+        RedirectOutput = Some (printfn "%s");
+        RedirectError = Some (printfn "%s");
+        RedirectInput = Some input;
+    }
+    exec' cmdArgs (cmdExePath.Value) (sprintf "/c %s" path)
 
 let exec_bat path = exec_bat_in (Path.GetDirectoryName(path)) path
-    
 
 let whereCommand cmd =
-    let path = sprintf "where %s" cmd
-    let processInfo = new ProcessStartInfo("cmd.exe", "/c " + path)
-    processInfo.CreateNoWindow <- true
-    processInfo.UseShellExecute <- false
-    // Redirect the output
-    processInfo.RedirectStandardError <- true
-    processInfo.RedirectStandardOutput <- true
+    let result = ref None
+    let lastLine = function null -> () | l -> result := Some l
 
-    let p = new Process()
-    p.StartInfo <- processInfo
+    let cmdArgs = {
+        WorkingDirectory = Path.GetTempPath();
+        RedirectOutput = Some lastLine;
+        RedirectError = None;
+        RedirectInput = None;
+    }
+    
+    match exec' cmdArgs (cmdExePath.Value) (sprintf "/c where %s" cmd) with
+    | ErrorLevel _ -> None
+    | OK -> !result
 
-    p.Start() |> ignore
-
-    p.WaitForExit()
-
-    let result =
-        match p.ExitCode with
-        | 0 -> Some (p.StandardOutput.ReadLine())
-        | _ -> None
-
-    p.Close()
-    result
+let createTempDir () =
+    let path = Path.GetTempFileName ()
+    File.Delete path
+    Directory.CreateDirectory path |> ignore
+    path
 
 let convertToShortPathBat = lazy (
-    let bat = Path.GetTempFileName () |> (fun p -> Path.ChangeExtension (p, ".bat"))
-    File.AppendAllLines (bat, [| "@ECHO OFF"; """for /f "delims=" %%I in (%1) do echo %%~dfsI""" |] )
+    let bat = Path.Combine(createTempDir (), "ConvertToShortPath.bat")
+    File.WriteAllLines (bat, [| "@ECHO OFF"; """for /f "delims=" %%I in (%1) do echo %%~dfsI""" |] )
     bat
 )
 
 let convertToShortPath path =
-    let processInfo = new ProcessStartInfo("cmd.exe", sprintf """/c ""%s" "%s"" """ convertToShortPathBat.Value path)
-    processInfo.CreateNoWindow <- true
-    processInfo.UseShellExecute <- false
-    // Redirect the output
-    processInfo.RedirectStandardError <- true
-    processInfo.RedirectStandardOutput <- true
+    let result = ref None
+    let lastLine = function null -> () | l -> result := Some l
 
-    let p = new Process()
-    p.StartInfo <- processInfo
-
-    p.Start() |> ignore
-
-    p.WaitForExit()
-
-    let result =
-        match p.ExitCode with
-        | 0 -> p.StandardOutput.ReadLine()
-        | _ -> path
-
-    p.Close()
-    result
+    let cmdArgs = {
+        WorkingDirectory = Path.GetTempPath();
+        RedirectOutput = Some lastLine;
+        RedirectError = Some (printfn "%s");
+        RedirectInput = None;
+    }
+    
+    match exec' cmdArgs (cmdExePath.Value) (sprintf """/c ""%s" "%s"" """ convertToShortPathBat.Value path) with
+    | ErrorLevel _ -> path
+    | OK -> match !result with None -> path | Some p -> p
     
     
 let createFSharpTest () =
@@ -262,32 +260,40 @@ type Commands = {
     type_append_tofile: string list -> string -> unit;
     fsc: string -> string list -> CmdResult;
     peverify: string -> CmdResult;
-    clix: string -> CmdResult;
+    clix: string -> string -> CmdResult;
     fsi: string -> string list -> CmdResult;
     fsiIn: string -> string list -> CmdResult;
     csc: string -> string list -> CmdResult;
 }
 
 let getHelpers cfg workDir = 
+    let exec input =
+        exec' {
+            WorkingDirectory = workDir;
+            RedirectOutput = Some (printfn "%s");
+            RedirectError = Some (printfn "%s");
+            RedirectInput = input;
+        }
+
+    let zipBlank = List.fold (fun s t -> s + " " + t) ""
+        
     let fsc flags srcFiles =
         //TODO envvars
-        let path = sprintf "%s %s%s" cfg.FSC flags (srcFiles |> List.fold (fun s t -> s + " " + t) "")
         // "%FSC%" %fsc_flags% --define:COMPILING_WITH_EMPTY_SIGNATURE -o:tmptest2.exe tmptest2.mli tmptest2.ml
-        exec_bat_in workDir path
+        exec None cfg.FSC (sprintf "%s%s"  flags (srcFiles |> zipBlank))
 
     let csc flags srcFiles =
         //TODO envvars
-        let path = sprintf "%s %s%s" cfg.CSC flags (srcFiles |> List.fold (fun s t -> s + " " + t) "")
         // "%FSC%" %fsc_flags% --define:COMPILING_WITH_EMPTY_SIGNATURE -o:tmptest2.exe tmptest2.mli tmptest2.ml
-        exec_bat_in workDir path
+        exec None cfg.CSC (sprintf "%s%s"  flags (srcFiles |> zipBlank))
 
-    let clix path = 
+    let clix =
         //TODO env args
-        exec_bat_in workDir path
+        exec None
 
     let fsi flags sources =
         //TODO env args
-        exec_bat_in workDir (sprintf "%s %s%s" cfg.FSI flags (sources |> List.fold (fun s t -> s + " " + t) "") )
+        exec None cfg.FSI (sprintf "%s%s" flags (sources |> zipBlank))
 
     let fsiIn flags sources =
         let inputWriter (writer: StreamWriter) =
@@ -303,13 +309,17 @@ let getHelpers cfg workDir =
                     ()
             sources |> List.iter pipeFile
 
-        exec_bat_in' workDir (sprintf "%s %s%s" cfg.FSI flags (sources |> List.fold (fun s t -> s + " " + t) "") ) inputWriter
+        exec (Some inputWriter) cfg.FSI (sprintf "%s%s" flags (sources |> zipBlank))
+
+    let peverify path = 
+        //TODO env args
+        exec None cfg.PEVERIFY path
 
     { echo_tofile = echo_tofile workDir;
       copy_y = copy_y workDir;
       type_append_tofile = type_append_tofile workDir;
       fsc = fsc;
-      peverify = (fun s -> Success);
+      peverify = peverify;
       clix = clix;
       fsi = fsi;
       fsiIn = fsiIn; 
