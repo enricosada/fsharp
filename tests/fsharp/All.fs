@@ -11,19 +11,10 @@ type CmdArguments = {
     RedirectOutput: (string -> unit) option;
     RedirectError: (string -> unit) option;
     RedirectInput: (StreamWriter -> unit) option;
-    WorkingDirectory: string;
 }
 
-let getfullpath workDir path =
-    let rooted =
-        if Path.IsPathRooted(path) then path
-        else Path.Combine(workDir, path)
-    rooted |> Path.GetFullPath
-
-let exec' cmdArgs path arguments =
-    let path = path |> getfullpath cmdArgs.WorkingDirectory
+let exec' cmdArgs workDir envs path arguments =
     //TODO gestione errore
-    printfn "%s" (sprintf "%s %s" path arguments)
     let processInfo = new ProcessStartInfo(path, arguments)
     processInfo.CreateNoWindow <- true
     processInfo.UseShellExecute <- false
@@ -31,7 +22,7 @@ let exec' cmdArgs path arguments =
     let p = new Process()
     p.StartInfo <- processInfo
 
-    p.StartInfo.WorkingDirectory <- cmdArgs.WorkingDirectory
+    p.StartInfo.WorkingDirectory <- workDir
 
     cmdArgs.RedirectOutput
     |> Option.map (fun f -> (fun (ea: DataReceivedEventArgs) -> ea.Data |> f)) 
@@ -72,157 +63,29 @@ let exec' cmdArgs path arguments =
     | 0 -> Success
     | err -> ErrorLevel err
 
-let cmdExePath = lazy (
-    let systemRoot = System.Environment.GetEnvironmentVariable("SystemRoot")
-    Path.Combine(systemRoot, "system32", "cmd.exe")
-)
-
-let exec_bat_in workDir path =
-    let cmdArgs = {
-        WorkingDirectory = workDir;
-        RedirectOutput = Some (printfn "%s");
-        RedirectError = Some (printfn "%s");
-        RedirectInput = None;
-    }
-    exec' cmdArgs (cmdExePath.Value) (sprintf "/c %s" path)
-
-let exec_bat_in' workDir path input =
-    let cmdArgs = {
-        WorkingDirectory = workDir;
-        RedirectOutput = Some (printfn "%s");
-        RedirectError = Some (printfn "%s");
-        RedirectInput = Some input;
-    }
-    exec' cmdArgs (cmdExePath.Value) (sprintf "/c %s" path)
-
-let exec_bat path = exec_bat_in (Path.GetDirectoryName(path)) path
-
 let whereCommand cmd =
     let result = ref None
     let lastLine = function null -> () | l -> result := Some l
 
     let cmdArgs = {
-        WorkingDirectory = Path.GetTempPath();
         RedirectOutput = Some lastLine;
         RedirectError = None;
         RedirectInput = None;
     }
     
-    match exec' cmdArgs (cmdExePath.Value) (sprintf "/c where %s" cmd) with
+    match exec' cmdArgs (Path.GetTempPath()) Map.empty "cmd.exe" (sprintf "/c where %s" cmd) with
     | ErrorLevel _ -> None
     | OK -> !result
-
-let createTempDir () =
-    let path = Path.GetTempFileName ()
-    File.Delete path
-    Directory.CreateDirectory path |> ignore
-    path
-
-let convertToShortPathBat = lazy (
-    let bat = Path.Combine(createTempDir (), "ConvertToShortPath.bat")
-    File.WriteAllLines (bat, [| "@ECHO OFF"; """for /f "delims=" %%I in (%1) do echo %%~dfsI""" |] )
-    bat
-)
-
-let convertToShortPath path =
-    let result = ref None
-    let lastLine = function null -> () | l -> result := Some l
-
-    let cmdArgs = {
-        WorkingDirectory = Path.GetTempPath();
-        RedirectOutput = Some lastLine;
-        RedirectError = Some (printfn "%s");
-        RedirectInput = None;
-    }
     
-    match exec' cmdArgs (cmdExePath.Value) (sprintf """/c ""%s" "%s"" """ convertToShortPathBat.Value path) with
-    | ErrorLevel _ -> path
-    | OK -> match !result with None -> path | Some p -> p
-    
-    
-let createFSharpTest () =
-    let baseDir = Path.Combine(__SOURCE_DIRECTORY__, "..", "fsharp")
-    
-    let testCaseData (path: string) = 
-        let name = sprintf "test: %s" (path.Replace(baseDir, ""))
-        (new TestCaseData( path ))
-            .SetName(name)
-            .SetCategory("4")
-            .SetDescription("An exception is expected")
-    
-    Directory.EnumerateDirectories(baseDir, "*", SearchOption.AllDirectories)
-    |> Seq.filter (fun d -> DirectoryInfo(d).EnumerateDirectories() |> Seq.isEmpty)
-    |> Seq.take 2
-    |> Seq.map testCaseData
-
-type Permutation = FSI_FILE | FSI_STDIN | FSI_STDIN_OPT | FSI_STDIN_GUI | FSC_BASIC | FSC_BASIC_64 | FSC_HW | FSC_O3 | GENERATED_SIGNATURE | EMPTY_SIGNATURE | EMPTY_SIGNATURE_OPT | FSC_OPT_MINUS_DEBUG | FSC_OPT_PLUS_DEBUG | FRENCH | SPANISH | AS_DLL | WRAPPER_NAMESPACE | WRAPPER_NAMESPACE_OPT
-
-let createTestCaseData (categories: string list) (properties: string list) list =
-    let testCaseData (p: Permutation) =
-        let name = sprintf "%A" p
-        let tc =
-            (new TestCaseData( p ))
-                .SetName(name)
-                .SetCategory(sprintf "%A" p)
-                .SetDescription("An exception is expected")
-        categories |> List.iter (fun c -> tc.Categories.Add(c) |> ignore)
-        properties |> List.iter (fun p -> tc.Categories.Add(p) |> ignore)
-        tc    
-    list
-    |> Seq.map testCaseData
-
-let allPermutation = 
-    [ FSI_FILE; FSI_STDIN; FSI_STDIN_OPT; FSI_STDIN_GUI;
-      FSC_BASIC; FSC_HW; FSC_O3;
-      GENERATED_SIGNATURE; EMPTY_SIGNATURE; EMPTY_SIGNATURE_OPT; 
-      FSC_OPT_MINUS_DEBUG; FSC_OPT_PLUS_DEBUG; 
-      FRENCH; SPANISH;
-      AS_DLL; 
-      WRAPPER_NAMESPACE; WRAPPER_NAMESPACE_OPT ]
 
 let fileExists path = if path |> File.Exists then Some path else None
 
 type BuildResult = OK | Error of int
 type RunResult = OK | Error of (int * string) | Skipped of string
 
-type PROCESSOR_ARCHITECTURE = X86 | IA64 | AMD64 | Unknown of string
-    with override this.ToString() = match this with X86 -> "x86" | IA64 -> "IA64" | AMD64 -> "AMD64" | Unknown arc -> arc
-
-let parseProcessorArchitecture (s: string) =
-    match s.ToUpper() with
-    | "X86" -> X86
-    | "IA64" -> IA64
-    | "AMD64" -> AMD64
-    | arc -> Unknown s
-
-
-
-//  %~i	    -   expands %i removing any surrounding quotes (")
-//  %~fi	-   expands %i to a fully qualified path name
-//  %~di	-   expands %i to a drive letter only
-//  %~pi	-   expands %i to a path only
-//  %~ni	-   expands %i to a file name only
-//  %~xi	-   expands %i to a file extension only
-//  %~si	-   expanded path contains short names only
-
 
 let echo = printfn
 
-/// copy /y %source1% tmptest2.ml
-let copy_y workDir source to' = 
-    source |> List.iter (fun s -> File.Copy(Path.Combine(workDir, s), Path.Combine(workDir, to'), true))
-
-/// echo // empty file  > tmptest2.mli
-let echo_tofile workDir text p = 
-    File.WriteAllText(Path.Combine(workDir, p), text)
-
-/// type %source1%  >> tmptest3.ml
-let type_append_tofile workDir source p =
-    let append_tofile f t =
-        let from = Path.Combine(workDir, f)
-        let to' = Path.Combine(workDir, t)
-        File.AppendAllText( from, File.ReadAllText(to'))
-    source |> List.iter (fun s -> append_tofile s p)
 
 type TestConfig = {
     EnvironmentVariables: Map<string,string>
@@ -260,78 +123,22 @@ let private env key =
     | "" -> None
     | x -> Some x
 
-//let private envOrDefault key def = match env key with Some x -> x | None -> def
-//let private envOrFail key = match env key with Some x -> x | None -> failwithf "environment variable '%s' required " key
-
 type Commands = {
     echo_tofile: string -> string -> unit;
     copy_y: string list -> string -> unit;
     type_append_tofile: string list -> string -> unit;
     fsc: string -> string list -> CmdResult;
+    fsc_flags: string;
     peverify: string -> CmdResult;
     clix: string -> string -> CmdResult;
     fsi: string -> string list -> CmdResult;
     fsiIn: string -> string list -> CmdResult;
+    fsi_flags: string;
     csc: string -> string list -> CmdResult;
+    csc_flags: string;
+    FsharpCoreDllPath: string;
 }
-
-let getHelpers cfg workDir = 
-    let exec input =
-        exec' {
-            WorkingDirectory = workDir;
-            RedirectOutput = Some (printfn "%s");
-            RedirectError = Some (printfn "%s");
-            RedirectInput = input;
-        }
-
-    let fsc flags srcFiles =
-        //TODO envvars
-        // "%FSC%" %fsc_flags% --define:COMPILING_WITH_EMPTY_SIGNATURE -o:tmptest2.exe tmptest2.mli tmptest2.ml
-        exec None cfg.FSC (sprintf "%s %s"  flags (srcFiles |> Seq.ofList |> String.concat " "))
-
-    let csc flags srcFiles =
-        //TODO envvars
-        // "%FSC%" %fsc_flags% --define:COMPILING_WITH_EMPTY_SIGNATURE -o:tmptest2.exe tmptest2.mli tmptest2.ml
-        exec None cfg.CSC (sprintf "%s %s"  flags (srcFiles |> Seq.ofList |> String.concat " "))
-
-    let clix =
-        //TODO env args
-        exec None
-
-    let fsi flags sources =
-        //TODO env args
-        exec None cfg.FSI (sprintf "%s %s" flags (sources |> Seq.ofList |> String.concat " "))
-
-    let fsiIn flags sources =
-        let inputWriter (writer: StreamWriter) =
-            let pipeFile name =
-                use reader = Path.Combine(workDir,name) |> File.OpenRead
-                use ms = new MemoryStream()
-                reader.CopyTo (ms)
-                ms.Position <- 0L
-                try
-                    ms.CopyTo(writer.BaseStream)
-                with 
-                | :? System.IO.IOException as ex -> //input closed is ok if process is closed
-                    ()
-            sources |> List.iter pipeFile
-
-        exec (Some inputWriter) cfg.FSI (sprintf "%s %s" flags (sources |> Seq.ofList |> String.concat " "))
-
-    let peverify path = 
-        //TODO env args
-        exec None cfg.PEVERIFY path
-
-    { echo_tofile = echo_tofile workDir;
-      copy_y = copy_y workDir;
-      type_append_tofile = type_append_tofile workDir;
-      fsc = fsc;
-      peverify = peverify;
-      clix = clix;
-      fsi = fsi;
-      fsiIn = fsiIn; 
-      csc = csc }
-
+    
 let withFileGuard path f =
     //  if exist test.ok (del /f /q test.ok)
     path |> fileExists |> Option.iter File.Delete
@@ -346,3 +153,5 @@ let withFileGuard path f =
         match path |> fileExists with
         | Some _ -> OK
         | None -> Error (0, sprintf "exit code 0 but %s file doesn't exists" (Path.GetFileName(path)))
+
+type Permutation = FSI_FILE | FSI_STDIN | FSI_STDIN_OPT | FSI_STDIN_GUI | FSC_BASIC | FSC_BASIC_64 | FSC_HW | FSC_O3 | GENERATED_SIGNATURE | EMPTY_SIGNATURE | EMPTY_SIGNATURE_OPT | FSC_OPT_MINUS_DEBUG | FSC_OPT_PLUS_DEBUG | FRENCH | SPANISH | AS_DLL | WRAPPER_NAMESPACE | WRAPPER_NAMESPACE_OPT

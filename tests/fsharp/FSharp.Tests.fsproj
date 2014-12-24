@@ -40,15 +40,18 @@
   </PropertyGroup>
   <Import Project="$(FSharpSourcesRoot)\FSharpSource.targets" />
   <ItemGroup>
-    <Compile Include="LibraryTestFx.fs" />
     <Compile Include="All.fs" />
+    <Compile Include="PlatformHelpers.fs" />
+    <Compile Include="Commands.fs" />
     <Compile Include="..\config.fs">
       <Link>config.fs</Link>
     </Compile>
+    <Compile Include="..\..\src\update.fs">
+      <Link>update.fs</Link>
+    </Compile>
+    <Compile Include="nunitConf.fs" />
     <Compile Include="single-test-build.fs" />
     <Compile Include="single-test-run.fs" />
-  </ItemGroup>
-  <ItemGroup>
     <Compile Include="core\_test.fs" />
     <None Include="core\access\test.fsx" />
     <None Include="core\apporder\test.fsx" />

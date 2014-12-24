@@ -5,85 +5,89 @@ open System.IO
 open All
 open TestConfig
 open NUnit.Framework
+open PlatformHelpers
      
 let singleTestRun' cfg testDir =
 
-    //set sources=
-    //if exist testlib.fsi (set sources=%sources% testlib.fsi)
-    //if exist testlib.fs (set sources=%sources% testlib.fs)
-    //if exist test.mli (set sources=%sources% test.mli)
-    //if exist test.ml (set sources=%sources% test.ml)
-    //if exist test.fsi (set sources=%sources% test.fsi)
-    //if exist test.fs (set sources=%sources% test.fs)
-    //if exist test2.mli (set sources=%sources% test2.mli)
-    //if exist test2.ml (set sources=%sources% test2.ml)
-    //if exist test2.fsi (set sources=%sources% test2.fsi)
-    //if exist test2.fs (set sources=%sources% test2.fs)
-    //if exist test.fsx (set sources=%sources% test.fsx)
-    //if exist test2.fsx (set sources=%sources% test2.fsx)
+    // set sources=
+    // if exist testlib.fsi (set sources=%sources% testlib.fsi)
+    // if exist testlib.fs (set sources=%sources% testlib.fs)
+    // if exist test.mli (set sources=%sources% test.mli)
+    // if exist test.ml (set sources=%sources% test.ml)
+    // if exist test.fsi (set sources=%sources% test.fsi)
+    // if exist test.fs (set sources=%sources% test.fs)
+    // if exist test2.mli (set sources=%sources% test2.mli)
+    // if exist test2.ml (set sources=%sources% test2.ml)
+    // if exist test2.fsi (set sources=%sources% test2.fsi)
+    // if exist test2.fs (set sources=%sources% test2.fs)
+    // if exist test.fsx (set sources=%sources% test.fsx)
+    // if exist test2.fsx (set sources=%sources% test2.fsx)
     let sources =
         ["testlib.fsi";"testlib.fs";"test.mli";"test.ml";"test.fsi";"test.fs";"test2.mli";"test2.ml";"test2.fsi";"test2.fs";"test.fsx";"test2.fsx"]
         |> List.filter (fun name -> (testDir/name) |> fileExists |> Option.isSome)
 
-    //set sourceshw=
-    //if exist test-hw.mli (set sourceshw=%sourceshw% test-hw.mli)
-    //if exist test-hw.ml (set sourceshw=%sourceshw% test-hw.ml)
-    //if exist test2-hw.mli (set sourceshw=%sourceshw% test2-hw.mli)
-    //if exist test2-hw.ml (set sourceshw=%sourceshw% test2-hw.ml)
-    //if exist test-hw.fsi (set sourceshw=%sourceshw% test-hw.fsi)
-    //if exist test-hw.fs (set sourceshw=%sourceshw% test-hw.fs)
-    //if exist test2-hw.fsi (set sourceshw=%sourceshw% test2-hw.fsi)
-    //if exist test2-hw.fs (set sourceshw=%sourceshw% test2-hw.fs)
-    //if exist test-hw.fsx (set sourceshw=%sourceshw% test-hw.fsx)
-    //if exist test2-hw.fsx (set sourceshw=%sourceshw% test2-hw.fsx)
+    // set sourceshw=
+    // if exist test-hw.mli (set sourceshw=%sourceshw% test-hw.mli)
+    // if exist test-hw.ml (set sourceshw=%sourceshw% test-hw.ml)
+    // if exist test2-hw.mli (set sourceshw=%sourceshw% test2-hw.mli)
+    // if exist test2-hw.ml (set sourceshw=%sourceshw% test2-hw.ml)
+    // if exist test-hw.fsi (set sourceshw=%sourceshw% test-hw.fsi)
+    // if exist test-hw.fs (set sourceshw=%sourceshw% test-hw.fs)
+    // if exist test2-hw.fsi (set sourceshw=%sourceshw% test2-hw.fsi)
+    // if exist test2-hw.fs (set sourceshw=%sourceshw% test2-hw.fs)
+    // if exist test-hw.fsx (set sourceshw=%sourceshw% test-hw.fsx)
+    // if exist test2-hw.fsx (set sourceshw=%sourceshw% test2-hw.fsx)
     let sourceshw =
         ["test-hw.mli";"test-hw.ml";"test2-hw.mli";"test2-hw.ml";"test-hw.fsi";"test-hw.fs";"test2-hw.fsi";"test2-hw.fs";"test-hw.fsx";"test2-hw.fsx"]
         |> List.filter (fun name -> (testDir/name) |> fileExists |> Option.isSome)
 
-    //:START
+    // :START
 
-    //set PERMUTATIONS_LIST=FSI_FILE FSI_STDIN FSI_STDIN_OPT FSI_STDIN_GUI FSC_BASIC %FSC_BASIC_64% FSC_HW FSC_O3 GENERATED_SIGNATURE EMPTY_SIGNATURE EMPTY_SIGNATURE_OPT FSC_OPT_MINUS_DEBUG FSC_OPT_PLUS_DEBUG FRENCH SPANISH AS_DLL WRAPPER_NAMESPACE WRAPPER_NAMESPACE_OPT
-    //
-    //if "%REDUCED_RUNTIME%"=="1" (
-    //    echo REDUCED_RUNTIME set
-    //    
-    //    if not defined PERMUTATIONS (
-    //        powershell.exe %PSH_FLAGS% -command "&{& '%~d0%~p0\PickPermutations.ps1' '%cd%' '%FSC%' '%PERMUTATIONS_LIST%'}" > _perm.txt
-    //        if errorlevel 1 (
-    //            set ERRORMSG=%ERRORMSG% PickPermutations.ps1 failed;
-    //            goto :ERROR
-    //        )
-    //        set /p PERMUTATIONS=<_perm.txt
-    //    )
-    //)
+    // set PERMUTATIONS_LIST=FSI_FILE FSI_STDIN FSI_STDIN_OPT FSI_STDIN_GUI FSC_BASIC %FSC_BASIC_64% FSC_HW FSC_O3 GENERATED_SIGNATURE EMPTY_SIGNATURE EMPTY_SIGNATURE_OPT FSC_OPT_MINUS_DEBUG FSC_OPT_PLUS_DEBUG FRENCH SPANISH AS_DLL WRAPPER_NAMESPACE WRAPPER_NAMESPACE_OPT
+    // 
+    // if "%REDUCED_RUNTIME%"=="1" (
+    //     echo REDUCED_RUNTIME set
+    //     
+    //     if not defined PERMUTATIONS (
+    //         powershell.exe %PSH_FLAGS% -command "&{& '%~d0%~p0\PickPermutations.ps1' '%cd%' '%FSC%' '%PERMUTATIONS_LIST%'}" > _perm.txt
+    //         if errorlevel 1 (
+    //             set ERRORMSG=%ERRORMSG% PickPermutations.ps1 failed;
+    //             goto :ERROR
+    //         )
+    //         set /p PERMUTATIONS=<_perm.txt
+    //     )
+    // )
 
-    //if not defined PERMUTATIONS (
-    //    echo "PERMUTATIONS not defined. Running everything."
-    //    set PERMUTATIONS=%PERMUTATIONS_LIST%
-    //)
+    // if not defined PERMUTATIONS (
+    //     echo "PERMUTATIONS not defined. Running everything."
+    //     set PERMUTATIONS=%PERMUTATIONS_LIST%
+    // )
 
-    //for %%A in (%PERMUTATIONS%) do (
-    //    call :%%A
-    //    IF ERRORLEVEL 1 EXIT /B 1
-    //)
+    // for %%A in (%PERMUTATIONS%) do (
+    //     call :%%A
+    //     IF ERRORLEVEL 1 EXIT /B 1
+    // )
 
-    //if "%ERRORMSG%"==""  goto Ok
+    // if "%ERRORMSG%"==""  goto Ok
 
-    //set NonexistentErrorLevel 2> nul
-    //goto :ERROR
+    // set NonexistentErrorLevel 2> nul
+    // goto :ERROR
 
-    //:END
+    // :END
 
-    //:EXIT_PATHS
+    // :EXIT_PATHS
 
-    //REM =========================================
-    //REM THE TESTS
-    //REM =========================================
+    // REM =========================================
+    // REM THE TESTS
+    // REM =========================================
 
-    let { clix = clix; 
-          fsi = fsi; 
-          fsiIn = fsiIn;
-        } = getHelpers cfg testDir
+    let loglines = printfn "%s" 
+    let exec = exec' { RedirectOutput = Some loglines; RedirectError = Some loglines; RedirectInput = None; } testDir []
+
+    let clix = exec
+    let fsi = Commands.fsi exec cfg.FSI
+    let fsiIn = Commands.fsiIn exec cfg.FSI
+    let fsi_flags = cfg.fsi_flags
 
     let withTestOkFile = withFileGuard (testDir/"test.ok")
 
@@ -93,13 +97,13 @@ let singleTestRun' cfg testDir =
         // if NOT EXIST dont.pipe.to.stdin (
         match fileExists (testDir/"dont.pipe.to.stdin") with
         | None -> 
-            //  if exist test.ok (del /f /q test.ok)
-            //  %CLIX% "%FSI%" %fsi_flags% < %sources% && (
-            let run () = fsiIn cfg.fsi_flags sources
-            //  dir test.ok > NUL 2>&1 ) || (
-            //  @echo FSI_STDIN failed;
-            //  set ERRORMSG=%ERRORMSG% FSI_STDIN failed;
-            //  )
+            // if exist test.ok (del /f /q test.ok)
+            // %CLIX% "%FSI%" %fsi_flags% < %sources% && (
+            let run () = fsiIn fsi_flags sources
+            // dir test.ok > NUL 2>&1 ) || (
+            // @echo FSI_STDIN failed;
+            // set ERRORMSG=%ERRORMSG% FSI_STDIN failed;
+            // )
             run |> withTestOkFile
         // )
         | Some _ -> Skipped "dont.pipe.to.stdin found"
@@ -112,7 +116,7 @@ let singleTestRun' cfg testDir =
         | None -> 
             // if exist test.ok (del /f /q test.ok)
             // %CLIX% "%FSI%" %fsi_flags% --optimize < %sources% && (
-            let run () = fsiIn (sprintf "%s --optimize" cfg.fsi_flags) sources
+            let run () = fsiIn (sprintf "%s --optimize" fsi_flags) sources
             // dir test.ok > NUL 2>&1 ) || (
             // @echo FSI_STDIN_OPT failed
             // set ERRORMSG=%ERRORMSG% FSI_STDIN_OPT failed;
@@ -129,7 +133,7 @@ let singleTestRun' cfg testDir =
         | None ->
             // if exist test.ok (del /f /q test.ok)
             // %CLIX% "%FSI%" %fsi_flags% --gui < %sources% && (
-            let run () = fsiIn (sprintf "%s --gui" cfg.fsi_flags) sources
+            let run () = fsiIn (sprintf "%s --gui" fsi_flags) sources
             // dir test.ok > NUL 2>&1 ) || (
             // @echo FSI_STDIN_GUI failed;
             // set ERRORMSG=%ERRORMSG% FSI_STDIN_GUI failed;
@@ -146,7 +150,7 @@ let singleTestRun' cfg testDir =
         | None -> 
             // if exist test.ok (del /f /q test.ok)
             // %CLIX% "%FSI%" %fsi_flags% %sources% && (
-            let run () = fsi cfg.fsi_flags sources
+            let run () = fsi fsi_flags sources
             // dir test.ok > NUL 2>&1 ) || (
             // @echo FSI_FILE failed
             // set ERRORMSG=%ERRORMSG% FSI_FILE failed;
@@ -383,7 +387,7 @@ let singleTestRun' cfg testDir =
         // )
         | Some _ -> Skipped "dont.use.wrapper.namespace found"
 
-    let run =  function
+    let run = function
         | FSI_FILE -> runFSI_FILE
         | FSI_STDIN -> runFSI_STDIN
         | FSI_STDIN_OPT -> runFSI_STDIN_OPT
@@ -454,17 +458,15 @@ let singleTestRun config testDir =
             //   set ERRORMSG=%ERRORMSG% fsc.exe not found at the location "%FSC%"
             //   goto :ERROR
             // )
-            match fileExists cfg.FSC with
-            | None -> Error (-2,(sprintf """fsc.exe not found at the location "%s" """ cfg.FSC))
-            | Some _ ->
-                // if not exist "%FSI%" (
-                //   set ERRORMSG=%ERRORMSG% fsi.exe not found at the location "%FSI%"
-                //   goto :ERROR
-                // )
-                match fileExists cfg.FSI with
-                | None -> Error (-3,(sprintf """fsi.exe not found at the location "%s" """ cfg.FSI))
-                | Some _ -> singleTestRun' cfg testDir p ()
+            ignore "already checked at test suite startup"
 
+            // if not exist "%FSI%" (
+            //   set ERRORMSG=%ERRORMSG% fsi.exe not found at the location "%FSI%"
+            //   goto :ERROR
+            // )
+            ignore "already checked at test suite startup"
+
+            singleTestRun' cfg testDir p ()
 
     let checkRun = function
         | OK -> doneOK ()

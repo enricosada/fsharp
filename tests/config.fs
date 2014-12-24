@@ -2,10 +2,11 @@ module TestConfig
 
 open System
 open System.IO
-open All
-
-open Microsoft.Win32
 open System.Collections.Generic
+
+open All
+open PlatformHelpers
+open Microsoft.Win32
 
 let GetSdk81Path sdkIdent =
     let regPath = Path.Combine(@"SOFTWARE\Microsoft\Microsoft SDKs\Windows\v8.1A\", sdkIdent)
@@ -28,8 +29,6 @@ type FSLibPaths = {
     FSCOREDLLNETCORE259PATH: string;
     FSDATATPPATH: string;
 }
-
-let inline (/) a b = Path.Combine(a,b)
 
 // REM ===
 // REM === Find paths to shipped F# libraries referenced by clients
@@ -167,15 +166,17 @@ let attendedLog envVars X86_PROGRAMFILES CORDIR CORDIR40 =
     getMsbuildPath, Ultimate
 
 
-let config envVars =
+let config exec envVars =
+    let ``%~d0`` = __SOURCE_DIRECTORY__
+
     // @if "%_echo%"=="" echo off
     ignore "useless"
     // set _SCRIPT_DRIVE=%~d0
-    let _SCRIPT_DRIVE = __SOURCE_DIRECTORY__ |> Path.GetPathRoot
+    let _SCRIPT_DRIVE = ``%~d0`` |> Path.GetPathRoot
     // set _SCRIPT_PATH=%~p0
     ignore "unused"
     // set SCRIPT_ROOT=%_SCRIPT_DRIVE%%_SCRIPT_PATH%
-    let SCRIPT_ROOT = __SOURCE_DIRECTORY__ |> Path.GetFullPath
+    let SCRIPT_ROOT = ``%~d0`` |> Path.GetFullPath
 
     let env key = envVars |> Map.tryFind key
     let envOrDefault key def = env key |> Option.fold (fun s t -> t) def
@@ -386,9 +387,9 @@ let config envVars =
 
     // REM use short names in the path so you don't have to deal with the space in things like "Program Files"
     // for /f "delims=" %%I in ("%CORSDK%") do set CORSDK=%%~dfsI%
-    !CORSDK |> Option.iter (fun sdk -> CORSDK := Some (convertToShortPath sdk))
+    !CORSDK |> Option.iter (fun sdk -> CORSDK := Some (Commands.convertToShortPath sdk))
     // for /f "delims=" %%I in ("%CORDIR%") do set CORDIR=%%~dfsI%
-    CORDIR := convertToShortPath !CORDIR
+    CORDIR := Commands.convertToShortPath !CORDIR
 
 
     // set NGEN=
@@ -459,10 +460,6 @@ let config envVars =
       ALINK = !ALINK;
       CORDIR = !CORDIR;
       CORSDK = (!CORSDK).Value;
-      CSC = (!CSC).Value;
-      csc_flags = csc_flags.Value;
-      FSC = FSC.Value;
-      fsc_flags = fsc_flags.Value;
       FSCBinPath = FSCBinPath.Value;
       FSCOREDLL20PATH = libs.FSCOREDLL20PATH;
       FSCOREDLLPATH = libs.FSCOREDLLPATH;
@@ -472,8 +469,6 @@ let config envVars =
       FSCOREDLLNETCORE259PATH = libs.FSCOREDLLNETCORE259PATH;
       FSDATATPPATH = libs.FSDATATPPATH;
       FSDIFF = FSDIFF;
-      FSI = FSI.Value;
-      fsi_flags = fsi_flags.Value;
       GACUTIL = GACUTIL.Value;
       ILDASM = ILDASM.Value;
       INSTALL_SKU = None;
@@ -481,6 +476,12 @@ let config envVars =
       NGEN = (!NGEN).Value;
       PEVERIFY = !PEVERIFY;
       RESGEN = !RESGEN;
+      CSC = (!CSC).Value;
+      FSC = FSC.Value;
+      FSI = FSI.Value;
+      csc_flags = csc_flags.Value;
+      fsc_flags = fsc_flags.Value;
+      fsi_flags = fsi_flags.Value;
     }
 
     // if DEFINED _UNATTENDEDLOG exit /b 0
@@ -490,6 +491,7 @@ let config envVars =
         let msbuildToolsPath, installSku = attendedLog envVars X86_PROGRAMFILES !CORDIR CORDIR40
         { cfg with MSBUILDTOOLSPATH = msbuildToolsPath; INSTALL_SKU = (Some installSku) }
 
+    
 
 let logConfig (cfg: TestConfig) =
     echo "%s" "---------------------------------------------------------------"
@@ -521,23 +523,3 @@ let logConfig (cfg: TestConfig) =
     echo "PEVERIFY            =%A" cfg.PEVERIFY
     echo "RESGEN              =%A" cfg.RESGEN
     echo "---------------------------------------------------------------"
-
-let getConfig = lazy (
-    let envVars = 
-        System.Environment.GetEnvironmentVariables () 
-        |> Seq.cast<System.Collections.DictionaryEntry>
-        |> Seq.map (fun d -> d.Key :?> string, d.Value :?> string)
-        |> Map.ofSeq
-
-    let defaults key defaultValue map =
-        if map |> Map.containsKey key 
-        then map 
-        else map |> Map.add key defaultValue
-
-    let FLAVOR = "Debug"
-    let FSCBinPath = Path.Combine(__SOURCE_DIRECTORY__, "..", FLAVOR, "net40", "bin")
-
-    envVars
-    |> defaults "FSCBinPath" FSCBinPath
-    |> config
-)

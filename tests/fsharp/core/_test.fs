@@ -7,6 +7,7 @@ open All
 open TestConfig
 open SingleTestBuild
 open SingleTestRun
+open NUnitConf
 
 let testDir subDir = Path.Combine(__SOURCE_DIRECTORY__, subDir)
 
@@ -26,57 +27,67 @@ let getProperties subDir =
     |> List.collect getTagsOfFile
 
 let test dirName phases (p: Permutation) =
-    let cfg, dir = getConfig.Value, (testDir dirName)
-    logConfig cfg
+    let dir = (testDir dirName)
     phases |> List.iter (fun phase -> phase cfg dir p)
 
+let allPermutations = NUnitConf.allPermutation
+
 module Access =
-    let permutations = All.allPermutation |> createTestCaseData (["core";"access"] @ (getProperties "access")) []
+    let permutations = allPermutations |> createTestCaseData (["core";"access"] @ (getProperties "access")) []
 
     [<Test; TestCaseSource("permutations")>]
     let access p = 
         p |> test "access" [singleTestBuild; singleTestRun]
 
 module Apporder = 
-    let permutations = All.allPermutation |> createTestCaseData (["core";"apporder"] @ (getProperties "apporder")) []
+    let permutations = allPermutations |> createTestCaseData (["core";"apporder"] @ (getProperties "apporder")) []
 
     [<Test; TestCaseSource("permutations")>]
     let apporder p = 
         p |> test "apporder" [singleTestBuild; singleTestRun]
 
 module Attributes = 
-    let permutations = All.allPermutation |> createTestCaseData  (["core";"attributes"] @ (getProperties "attributes")) []
+    let permutations = allPermutations |> createTestCaseData  (["core";"attributes"] @ (getProperties "attributes")) []
 
     [<Test; TestCaseSource("permutations")>]
     let attributes p = 
         p |> test "attributes" [singleTestBuild; singleTestRun]
 
 module Comprehensions = 
-    let permutations = All.allPermutation |> createTestCaseData  (["core";"comprenhensions"] @ (getProperties "comprehensions")) []
+    let permutations = allPermutations |> createTestCaseData  (["core";"comprenhensions"] @ (getProperties "comprehensions")) []
 
     [<Test; TestCaseSource("permutations")>]
     let comprehensions p = 
         p |> test "comprehensions" [singleTestBuild; singleTestRun]
 
 module ControlWpf = 
-    let permutations = All.allPermutation |> createTestCaseData  (["core";"controlwpf"] @ (getProperties "controlwpf")) []
+    let permutations = allPermutations |> createTestCaseData  (["core";"controlwpf"] @ (getProperties "controlwpf")) []
 
     [<Test; TestCaseSource("permutations")>]
     let controlWpf p = 
         p |> test "controlWpf" [singleTestBuild; singleTestRun]
 
 module Events = 
-    let permutations = All.allPermutation |> createTestCaseData  (["core";"events"] @ (getProperties "events")) []
+    let permutations = allPermutations |> createTestCaseData  (["core";"events"] @ (getProperties "events")) []
 
     let failIfError = function
     | OK -> ()
     | Error (err, msg) -> Assert.Fail (sprintf "ERRORLEVEL %i %s" err msg)
     | Skipped msg -> ()
 
+    open PlatformHelpers
+
     let build cfg dir p =
-        let { fsc = fsc; peverify = peverify; csc = csc; } = getHelpers cfg dir
+        let loglines = printfn "%s" 
+        let exec = exec' { RedirectOutput = Some loglines; RedirectError = Some loglines; RedirectInput = None; } dir []
+        let fsc = Commands.fsc exec cfg.FSC
+        let peverify = Commands.peverify exec cfg.PEVERIFY
+        let csc = Commands.csc exec cfg.CSC
+        let fsc_flags = cfg.fsc_flags
+        let FSharpCoreDllPath = cfg.FSCOREDLLPATH
+
         // "%FSC%" %fsc_flags% -a -o:test.dll -g test.fs
-        match fsc (sprintf "%s -a -o:test.dll -g" cfg.fsc_flags) ["test.fs"] with
+        match fsc (sprintf "%s -a -o:test.dll -g" fsc_flags) ["test.fs"] with
         | ErrorLevel err -> Error (err, "fsc failed")
             // @if ERRORLEVEL 1 goto Error
         | Ok ->
@@ -86,7 +97,7 @@ module Events =
                 // @if ERRORLEVEL 1 goto Error
             | Ok ->
                 // %CSC% /r:"%FSCOREDLLPATH%" /reference:test.dll /debug+ testcs.cs
-                match csc (sprintf """/r:"%s" /reference:test.dll /debug+""" cfg.FSCOREDLLPATH) ["testcs.cs"] with
+                match csc (sprintf """/r:"%s" /reference:test.dll /debug+""" FSharpCoreDllPath) ["testcs.cs"] with
                 | ErrorLevel err -> Error (err, "csc failed")
                     // @if ERRORLEVEL 1 goto Error
                 | Ok ->
@@ -97,7 +108,10 @@ module Events =
                     | Ok -> OK
 
     let run cfg dir p =
-        let { clix = clix; fsi = fsi; } = getHelpers cfg dir
+        let loglines = printfn "%s" 
+        let exec = exec' { RedirectOutput = Some loglines; RedirectError = Some loglines; RedirectInput = None; } dir []
+        let clix = exec
+        let fsi = Commands.fsi exec cfg.FSI
 
         // %CLIX% "%FSI%" test.fs && (
         match withFileGuard (dir/"test.ok") (fun () -> fsi "" ["test.fs"])  with
@@ -109,7 +123,7 @@ module Events =
         // )
         | Ok ->
             // %CLIX% .\testcs.exe
-            match clix @".\testcs.exe" "" with
+            match clix "."/"testcs.exe" "" with
             | ErrorLevel err -> Error (err, "testcs.exe")
             // if ERRORLEVEL 1 goto Error
             | Ok -> OK
