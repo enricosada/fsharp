@@ -156,7 +156,7 @@ let singleTestBuild cfg testDir =
         echo "No build action to take for this permutation"
         OK
 
-    let doBasic () =
+    let doBasic () = 
         // FSC %fsc_flags% --define:BASIC_TEST -o:test.exe -g %sources%
         //if ERRORLEVEL 1 goto Error
         match fsc (sprintf "%s --define:BASIC_TEST -o:test.exe -g" fsc_flags) sources with

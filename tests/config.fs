@@ -166,7 +166,7 @@ let attendedLog envVars X86_PROGRAMFILES CORDIR CORDIR40 =
     getMsbuildPath, Ultimate
 
 
-let config exec envVars =
+let config envVars =
     let ``%~d0`` = __SOURCE_DIRECTORY__
 
     // @if "%_echo%"=="" echo off

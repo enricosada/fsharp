@@ -12,7 +12,7 @@ type Configuration = DEBUG | RELEASE
 
 type updateCmdArgs = { Configuration: Configuration; Ngen: bool; }
 
-let updateCmd exec' envVars args =
+let updateCmd envVars args =
     // @echo off
     // setlocal
     ignore "useless"
@@ -31,7 +31,8 @@ let updateCmd exec' envVars args =
     //:ok
     let env k = envVars |> Map.find k
     let ``~dp0`` = __SOURCE_DIRECTORY__
-    let exec = exec' None  ``~dp0``
+    let logToConsole = printfn "%s"
+    let exec = exec' { RedirectError = Some logToConsole; RedirectOutput = Some logToConsole; RedirectInput = None } ``~dp0`` envVars
 
     // set BINDIR=%~dp0..\%1\net40\bin
     let BINDIR = env "FSCBinPath"

@@ -34,9 +34,8 @@ let gacutil exec exeName flags assembly =
 // "%NGEN32%" install "%BINDIR%\fsi.exe" /queue:1
 // "%NGEN32%" install "%BINDIR%\FSharp.Build.dll" /queue:1
 // "%NGEN32%" executeQueuedItems 1
-let ngen exec (ngenExe: string) assemblies =
+let ngen exec (ngenExe: FilePath) assemblies =
     let queue = assemblies |> List.map (fun a -> (sprintf "install \"%s\" /queue:1" a))
-    let ngen args = exec ngenExe args |> (function ErrorLevel x -> Some (ErrorLevel x) | Ok -> None)
 
     List.concat [ ["executeQueuedItems 1"]; queue ]
     |> Seq.ofList
@@ -68,7 +67,7 @@ let fsiIn exec fsiExe flags sources =
                 ()
         sources |> List.iter pipeFile
 
-    exec (Some inputWriter) fsiExe (sprintf "%s %s" flags (sources |> Seq.ofList |> String.concat " "))
+    exec inputWriter fsiExe (sprintf "%s %s" flags (sources |> Seq.ofList |> String.concat " "))
 
 let peverify exec peverifyExe path =
     exec peverifyExe path
@@ -94,3 +93,4 @@ let convertToShortPath path =
     match exec' cmdArgs (Path.GetTempPath()) Map.empty "cmd.exe" args with
     | ErrorLevel _ -> path
     | Ok -> match !result with None -> path | Some p -> p
+

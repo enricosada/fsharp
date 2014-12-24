@@ -28,6 +28,7 @@ let getProperties subDir =
 
 let test dirName phases (p: Permutation) =
     let dir = (testDir dirName)
+    let cfg = suiteHelpers.Value
     phases |> List.iter (fun phase -> phase cfg dir p)
 
 let allPermutations = NUnitConf.allPermutation
@@ -123,7 +124,7 @@ module Events =
         // )
         | Ok ->
             // %CLIX% .\testcs.exe
-            match clix "."/"testcs.exe" "" with
+            match clix ("."/"testcs.exe") "" with
             | ErrorLevel err -> Error (err, "testcs.exe")
             // if ERRORLEVEL 1 goto Error
             | Ok -> OK

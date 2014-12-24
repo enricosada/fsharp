@@ -83,10 +83,11 @@ let singleTestRun' cfg testDir =
 
     let loglines = printfn "%s" 
     let exec = exec' { RedirectOutput = Some loglines; RedirectError = Some loglines; RedirectInput = None; } testDir []
+    let execIn input = exec' { RedirectOutput = Some loglines; RedirectError = Some loglines; RedirectInput = Some input; } testDir []
 
     let clix = exec
     let fsi = Commands.fsi exec cfg.FSI
-    let fsiIn = Commands.fsiIn exec cfg.FSI
+    let fsiIn = Commands.fsiIn execIn cfg.FSI
     let fsi_flags = cfg.fsi_flags
 
     let withTestOkFile = withFileGuard (testDir/"test.ok")

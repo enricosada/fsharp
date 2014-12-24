@@ -30,19 +30,9 @@ let initializeSuite () =
 
     //TODO check FSCBinPath directory exists
 
-    let logToConsole = printfn "%s"
+    updateCmd env { Configuration = configurationName; Ngen = doNgen; }
 
-    let exec input workDir =
-        exec' {
-            WorkingDirectory = workDir; 
-            RedirectError = Some logToConsole;  
-            RedirectOutput = Some logToConsole;  
-            RedirectInput = input;  
-        }
-
-    updateCmd exec env { Configuration = configurationName; Ngen = doNgen; }
-
-    let cfg = config exec env
+    let cfg = config env
 
     logConfig cfg
 
@@ -52,22 +42,22 @@ let initializeSuite () =
             File.AppendAllText (p, """echo 'printfn "ciao"; exit 0""")
             p
 
-        match cmds.fsc "" [tempFile]  with
-        | ErrorLevel e -> Assert.Fail (sprintf """invalid fsc '%s' """ cfg.FSC)
+        let logToConsole = printfn "%s"
+        let tempDir = Commands.createTempDir ()
+        let exec = exec' { RedirectError = Some logToConsole; RedirectOutput = Some logToConsole; RedirectInput = None } tempDir envVars
+        let execIn input = exec' { RedirectError = Some logToConsole; RedirectOutput = Some logToConsole; RedirectInput = Some input } tempDir envVars
+
+        match Commands.fsc exec cfg.FSC "" [tempFile] with
+        | ErrorLevel _ -> Assert.Fail (sprintf """invalid fsc '%s' """ cfg.FSC)
         | Ok -> ()
 
-        match cmds.fsiIn "" [tempFile] with
+        match Commands.fsiIn execIn cfg.FSI "" [tempFile] with
         | ErrorLevel e -> Assert.Fail (sprintf """invalid fsi '%s' """ cfg.FSI)
         | Ok -> ()
     
     smokeTest ()
 
-    let ex cmdArgs path arguments =
-        let fullpath = path |> getfullpath cmdArgs.WorkingDirectory
-        printfn "%s" (sprintf "%s %s" fullpath arguments)
-        exec' cmdArgs fullpath arguments
-
-    cmds
+    cfg
 
 let suiteHelpers = lazy (
     initializeSuite ()

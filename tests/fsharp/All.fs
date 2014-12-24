@@ -13,16 +13,17 @@ type CmdArguments = {
     RedirectInput: (StreamWriter -> unit) option;
 }
 
-let exec' cmdArgs workDir envs path arguments =
+type FilePath = string
+
+let exec' cmdArgs (workDir: FilePath) envs (path: FilePath) arguments =
     //TODO gestione errore
     let processInfo = new ProcessStartInfo(path, arguments)
     processInfo.CreateNoWindow <- true
     processInfo.UseShellExecute <- false
+    processInfo.WorkingDirectory <- workDir
 
     let p = new Process()
     p.StartInfo <- processInfo
-
-    p.StartInfo.WorkingDirectory <- workDir
 
     cmdArgs.RedirectOutput
     |> Option.map (fun f -> (fun (ea: DataReceivedEventArgs) -> ea.Data |> f)) 
@@ -75,8 +76,7 @@ let whereCommand cmd =
     
     match exec' cmdArgs (Path.GetTempPath()) Map.empty "cmd.exe" (sprintf "/c where %s" cmd) with
     | ErrorLevel _ -> None
-    | OK -> !result
-    
+    | OK -> !result    
 
 let fileExists path = if path |> File.Exists then Some path else None
 
@@ -116,28 +116,6 @@ type TestConfig = {
     RESGEN: string;
 }
 and INSTALL_SKU = Clean | DesktopExpress | WebExpress | Ultimate
-
-let private env key = 
-    match Environment.GetEnvironmentVariable(key) with
-    | null -> None
-    | "" -> None
-    | x -> Some x
-
-type Commands = {
-    echo_tofile: string -> string -> unit;
-    copy_y: string list -> string -> unit;
-    type_append_tofile: string list -> string -> unit;
-    fsc: string -> string list -> CmdResult;
-    fsc_flags: string;
-    peverify: string -> CmdResult;
-    clix: string -> string -> CmdResult;
-    fsi: string -> string list -> CmdResult;
-    fsiIn: string -> string list -> CmdResult;
-    fsi_flags: string;
-    csc: string -> string list -> CmdResult;
-    csc_flags: string;
-    FsharpCoreDllPath: string;
-}
     
 let withFileGuard path f =
     //  if exist test.ok (del /f /q test.ok)
@@ -155,3 +133,38 @@ let withFileGuard path f =
         | None -> Error (0, sprintf "exit code 0 but %s file doesn't exists" (Path.GetFileName(path)))
 
 type Permutation = FSI_FILE | FSI_STDIN | FSI_STDIN_OPT | FSI_STDIN_GUI | FSC_BASIC | FSC_BASIC_64 | FSC_HW | FSC_O3 | GENERATED_SIGNATURE | EMPTY_SIGNATURE | EMPTY_SIGNATURE_OPT | FSC_OPT_MINUS_DEBUG | FSC_OPT_PLUS_DEBUG | FRENCH | SPANISH | AS_DLL | WRAPPER_NAMESPACE | WRAPPER_NAMESPACE_OPT
+
+
+//type Result<'T> =
+//    | Success of 'T
+//    | Failure of Error
+//and Error = { Message: string }
+//
+//type Attempt<'T> = (unit -> Result<'T>)
+//
+//let succeed x = (fun () -> Success (x)) : Attempt<'T>
+//let fail err = (fun () -> Failure(err)) : Attempt<'T>
+//let runAttempt (a: Attempt<'T>) = a ()
+//
+//let bind (f: Attempt<'T>) (rest: 'T -> Attempt<'U>) : Attempt<'U> =
+//    match runAttempt f with
+//    | Failure (msg) -> fail msg
+//    | Success (res) as v -> rest res
+//
+//let getValue (res: Result<'T>) = 
+//    match res with
+//    | Success v -> v
+//    | Failure err -> failwith err.Message 
+//
+//type ProcessBuilder () =
+//    member b.Return(x) = succeed x
+//    member b.ReturnFrom(x) = x
+//    member b.Bind(p, rest) = bind p rest
+//    member b.Let(p, rest) : Attempt<'T> = rest p
+//
+//type Processor () =
+//    static member Run workflow =
+//        runAttempt workflow
+//
+//let processor = Processor()
+
