@@ -32,7 +32,9 @@ let updateCmd envVars args =
     let env k = envVars |> Map.find k
     let ``~dp0`` = __SOURCE_DIRECTORY__
     let logToConsole = printfn "%s"
-    let exec = exec' { RedirectError = Some logToConsole; RedirectOutput = Some logToConsole; RedirectInput = None } ``~dp0`` envVars
+    let exec exe args = 
+        printfn "%s %s" exe args
+        exec' { RedirectError = Some logToConsole; RedirectOutput = Some logToConsole; RedirectInput = None } ``~dp0`` envVars exe args
 
     // set BINDIR=%~dp0..\%1\net40\bin
     let BINDIR = env "FSCBinPath"

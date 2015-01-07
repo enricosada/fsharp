@@ -22,7 +22,7 @@ let initializeSuite () =
 
     let configurationName = DEBUG
     let doNgen = false;
-    let FSCBinPath = System.IO.Path.Combine(__SOURCE_DIRECTORY__, "..", (sprintf "%O" configurationName), "net40", "bin")
+    let FSCBinPath = System.IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", (sprintf "%O" configurationName), "net40", "bin")
 
     let defaults = [ "FSCBinPath", FSCBinPath ] |> Map.ofList
 
@@ -37,21 +37,25 @@ let initializeSuite () =
     logConfig cfg
 
     let smokeTest () =
-        let tempFile = 
-            let p = Path.GetTempFileName()
-            File.AppendAllText (p, """echo 'printfn "ciao"; exit 0""")
+        let tempFile ext = 
+            let p = Path.ChangeExtension( Path.GetTempFileName(), ext)
+            File.AppendAllText (p, """printfn "ciao"; exit 0""")
             p
 
         let logToConsole = printfn "%s"
         let tempDir = Commands.createTempDir ()
-        let exec = exec' { RedirectError = Some logToConsole; RedirectOutput = Some logToConsole; RedirectInput = None } tempDir envVars
-        let execIn input = exec' { RedirectError = Some logToConsole; RedirectOutput = Some logToConsole; RedirectInput = Some input } tempDir envVars
+        let exec exe args = 
+            printfn "%s %s" exe args
+            exec' { RedirectError = Some logToConsole; RedirectOutput = Some logToConsole; RedirectInput = None } tempDir envVars exe args
+        let execIn input exe args = 
+            printfn "%s %s" exe args
+            exec' { RedirectError = Some logToConsole; RedirectOutput = Some logToConsole; RedirectInput = Some input } tempDir envVars exe args
 
-        match Commands.fsc exec cfg.FSC "" [tempFile] with
+        match Commands.fsc exec cfg.FSC "" [ tempFile ".fs" ] with
         | ErrorLevel _ -> Assert.Fail (sprintf """invalid fsc '%s' """ cfg.FSC)
         | Ok -> ()
 
-        match Commands.fsiIn execIn cfg.FSI "" [tempFile] with
+        match Commands.fsi exec cfg.FSI "" [ tempFile ".fsx" ] with
         | ErrorLevel e -> Assert.Fail (sprintf """invalid fsi '%s' """ cfg.FSI)
         | Ok -> ()
     

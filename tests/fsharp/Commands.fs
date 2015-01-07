@@ -62,12 +62,12 @@ let fsiIn exec fsiExe flags sources =
             ms.Position <- 0L
             try
                 ms.CopyTo(writer.BaseStream)
-            with 
+            with
             | :? System.IO.IOException as ex -> //input closed is ok if process is closed
                 ()
         sources |> List.iter pipeFile
 
-    exec inputWriter fsiExe (sprintf "%s %s" flags (sources |> Seq.ofList |> String.concat " "))
+    exec inputWriter fsiExe flags
 
 let peverify exec peverifyExe path =
     exec peverifyExe path

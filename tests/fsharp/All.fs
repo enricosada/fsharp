@@ -23,6 +23,7 @@ let exec' cmdArgs (workDir: FilePath) envs (path: FilePath) arguments =
     processInfo.WorkingDirectory <- workDir
 
     let p = new Process()
+    p.EnableRaisingEvents <- true
     p.StartInfo <- processInfo
 
     cmdArgs.RedirectOutput
@@ -42,6 +43,13 @@ let exec' cmdArgs (workDir: FilePath) envs (path: FilePath) arguments =
     cmdArgs.RedirectInput
     |> Option.iter (fun _ -> p.StartInfo.RedirectStandardInput <- true)
 
+    let exitedAsync (proc: Process) =
+        let tcs = new System.Threading.Tasks.TaskCompletionSource<int>();
+        p.Exited.Add (fun s -> 
+            tcs.TrySetResult(proc.ExitCode) |> ignore
+            proc.Dispose())
+        tcs.Task
+
     p.Start() |> ignore
     
     cmdArgs.RedirectOutput |> Option.iter (fun _ -> p.BeginOutputReadLine())
@@ -49,16 +57,16 @@ let exec' cmdArgs (workDir: FilePath) envs (path: FilePath) arguments =
 
     cmdArgs.RedirectInput
     |> Option.iter (fun input ->
-        let inputWriter = p.StandardInput
-        input inputWriter
+        let pipeInput = async {
+            let inputWriter = p.StandardInput
+            input inputWriter
+            do! inputWriter.FlushAsync () |> Async.AwaitIAsyncResult |> Async.Ignore
+            inputWriter.Close ()
+        }
+        pipeInput |> Async.Start
     )
 
-    p.WaitForExit()
-
-    // Read the streams
-
-    let exitCode = p.ExitCode
-    p.Close()
+    let exitCode = p |> exitedAsync |> Async.AwaitTask |> Async.RunSynchronously
 
     match exitCode with
     | 0 -> Success
