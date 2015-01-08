@@ -108,14 +108,14 @@ type public InitializeSuiteAttribute () =
 
 open All
 
-let createTestCaseData (categories: string list) (properties: string list) list =
+let createTestCaseData categories properties list =
     let testCaseData (p: Permutation) =
         let name = sprintf "%A" p
         let tc = new TestCaseData( p )
         tc.SetName(name) |> ignore
         tc.SetCategory(sprintf "%A" p) |> ignore
-        categories |> List.iter (fun c -> tc.Categories.Add(c) |> ignore)
-        properties |> List.iter (fun p -> tc.Categories.Add(p) |> ignore)
+        categories |> List.iter (fun (c: string) -> tc.Categories.Add(c) |> ignore)
+        properties |> Map.iter (fun k v -> tc.Properties.Add(k,v))
         tc    
     list
     |> Seq.map testCaseData
@@ -143,3 +143,6 @@ let getProperties dir =
     Directory.EnumerateFiles(dir, "*.fs*")
     |> Seq.toList
     |> List.collect getTagsOfFile
+
+let getCategories testDir group subDir =
+    [group; subDir] @ (testDir subDir |> getProperties)

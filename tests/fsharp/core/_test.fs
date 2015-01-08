@@ -18,47 +18,45 @@ let test dirName phases (p: Permutation) =
 
 let allPermutations = NUnitConf.allPermutation
 
-let getCategories subDir =
-    let group = "core"
-    [group; subDir] @ (testDir subDir |> getProperties)
+let getCategories = NUnitConf.getCategories testDir "core"
 
 module Access =
-    let permutations = allPermutations |> createTestCaseData (getCategories "access") []
+    let permutations = allPermutations |> createTestCaseData (getCategories "access") Map.empty
 
     [<Test; TestCaseSource("permutations")>]
     let access p = 
         p |> test "access" [singleTestBuild; singleTestRun]
 
 module Apporder = 
-    let permutations = allPermutations |> createTestCaseData (getCategories "apporder") []
+    let permutations = allPermutations |> createTestCaseData (getCategories "apporder") Map.empty
 
     [<Test; TestCaseSource("permutations")>]
     let apporder p = 
         p |> test "apporder" [singleTestBuild; singleTestRun]
 
 module Attributes = 
-    let permutations = allPermutations |> createTestCaseData (getCategories "attributes") []
+    let permutations = allPermutations |> createTestCaseData (getCategories "attributes") Map.empty
 
     [<Test; TestCaseSource("permutations")>]
     let attributes p = 
         p |> test "attributes" [singleTestBuild; singleTestRun]
 
 module Comprehensions = 
-    let permutations = allPermutations |> createTestCaseData  (getCategories "comprehensions") []
+    let permutations = allPermutations |> createTestCaseData (getCategories "comprehensions") Map.empty
 
     [<Test; TestCaseSource("permutations")>]
     let comprehensions p = 
         p |> test "comprehensions" [singleTestBuild; singleTestRun]
 
 module ControlWpf = 
-    let permutations = allPermutations |> createTestCaseData  (getCategories "controlwpf") []
+    let permutations = allPermutations |> createTestCaseData (getCategories "controlwpf") Map.empty
 
     [<Test; TestCaseSource("permutations")>]
     let controlWpf p = 
         p |> test "controlWpf" [singleTestBuild; singleTestRun]
 
 module Events = 
-    let permutations = allPermutations |> createTestCaseData  (getCategories "events") []
+    let permutations = allPermutations |> createTestCaseData (getCategories "events") Map.empty
 
     let failIfError = function
     | OK -> ()
@@ -123,7 +121,7 @@ module Events =
             | Ok -> OK
 
     [<Test; TestCaseSource("permutations")>]
-    let events (p: Permutation) = 
+    let events p =
         let checkFailure f c d = (f c d) >> failIfError
         p |> test "events" [build |> checkFailure; run |> checkFailure]
 
