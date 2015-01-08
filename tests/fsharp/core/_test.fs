@@ -79,8 +79,10 @@ module Events =
     open PlatformHelpers
 
     let build cfg dir p =
-        let loglines = printfn "%s" 
-        let exec = exec' { RedirectOutput = Some loglines; RedirectError = Some loglines; RedirectInput = None; } dir []
+        let loglines = printfn "%s"
+        let exec path args =
+            printfn "%s %s" path args
+            exec' { RedirectOutput = Some loglines; RedirectError = Some loglines; RedirectInput = None; } dir cfg.EnvironmentVariables path args
         let fsc = Commands.fsc exec cfg.FSC
         let peverify = Commands.peverify exec cfg.PEVERIFY
         let csc = Commands.csc exec cfg.CSC
@@ -110,12 +112,14 @@ module Events =
 
     let run cfg dir p =
         let loglines = printfn "%s" 
-        let exec = exec' { RedirectOutput = Some loglines; RedirectError = Some loglines; RedirectInput = None; } dir []
+        let exec path args = 
+            printfn "%s %s" path args
+            exec' { RedirectOutput = Some loglines; RedirectError = Some loglines; RedirectInput = None; } dir cfg.EnvironmentVariables path args
         let clix = exec
         let fsi = Commands.fsi exec cfg.FSI
 
         // %CLIX% "%FSI%" test.fs && (
-        match withFileGuard (dir/"test.ok") (fun () -> fsi "" ["test.fs"])  with
+        match withFileGuard (dir/"test.ok") (fun () -> fsi "" ["test.fs"]) with
         | Error x -> Error x
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :FSI failed;
@@ -124,7 +128,7 @@ module Events =
         // )
         | Ok ->
             // %CLIX% .\testcs.exe
-            match clix ("."/"testcs.exe") "" with
+            match clix (dir/"testcs.exe") "" with
             | ErrorLevel err -> Error (err, "testcs.exe")
             // if ERRORLEVEL 1 goto Error
             | Ok -> OK

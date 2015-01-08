@@ -226,13 +226,13 @@ let config envVars =
     //   set fsiroot=fsi
     // )
     let FSC = env "fsc" |> ref
-    let csc_flags = !FSC |> function None -> Some "/nologo" | Some _ -> env "csc_flags"
+    let csc_flags = !FSC |> function None -> "/nologo" | Some _ -> (envOrDefault "csc_flags" "/nologo")
     let fsiroot = !FSC |> (function None -> Some "fsi" | Some _ -> env "fsiroot") |> ref
 
     // if not defined ALINK  set ALINK=al.exe
     let ALINK = ref (envOrDefault "ALINK" "al.exe")
     // if not defined CSC    set CSC=csc.exe %csc_flags%
-    let CSC = envOrDefault "CSC" (sprintf "csc.exe %s" (csc_flags |> function None -> "" | Some flags -> flags))
+    let CSC = envOrDefault "CSC" "csc.exe"
 
     // REM SDK Dependencires.
     // if not defined ILDASM   set ILDASM=ildasm.exe
@@ -403,11 +403,11 @@ let config envVars =
     // IF NOT "%CORDIR%"=="" IF EXIST "%CORDIR%\csc.exe" SET CSC="%CORDIR%\csc.exe" %csc_flags%
     let CSC = ref None
     if not <| (!CORDIR = "") then
-        fileExists (!CORDIR/"csc.exe") |> Option.iter (fun cscExe -> CSC := Some (sprintf "%s %s" cscExe (csc_flags |> Option.fold (fun s t -> t) "")))
+        fileExists (!CORDIR/"csc.exe") |> Option.iter (fun cscExe -> CSC := Some cscExe)
     // IF     "%CORDIR40%"=="" IF NOT "%CORDIR%"=="" IF EXIST "%CORDIR%\..\V3.5\csc.exe" SET CSC="%CORDIR%\..\v3.5\csc.exe" %csc_flags%
     if CORDIR40 |> Option.isNone then
         if not <| (!CORDIR = "") then
-            fileExists (!CORDIR/".."/"V3.5"/"csc.exe") |> Option.iter (fun cscExe -> CSC := Some (sprintf "%s %s" cscExe (csc_flags |> Option.fold (fun s t -> t) "")))
+            fileExists (!CORDIR/".."/"V3.5"/"csc.exe") |> Option.iter (fun cscExe -> CSC := Some cscExe)
 
 
     // IF NOT "%CORDIR%"=="" IF EXIST "%CORDIR%\ngen.exe"            SET NGEN=%CORDIR%\ngen.exe
@@ -479,7 +479,7 @@ let config envVars =
       CSC = (!CSC).Value;
       FSC = FSC.Value;
       FSI = FSI.Value;
-      csc_flags = csc_flags.Value;
+      csc_flags = csc_flags;
       fsc_flags = fsc_flags.Value;
       fsi_flags = fsi_flags.Value;
     }
