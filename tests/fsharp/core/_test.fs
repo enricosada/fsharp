@@ -11,21 +11,6 @@ open NUnitConf
 
 let testDir subDir = Path.Combine(__SOURCE_DIRECTORY__, subDir)
 
-let getTagsOfFile path =
-    match File.ReadLines(path) |> Seq.tryFind (fun _ -> true) with
-    | None -> []
-    | Some line -> 
-        line.TrimStart('/').Split([| '#' |], StringSplitOptions.RemoveEmptyEntries)
-        |> Seq.map (fun s -> s.Trim())
-        |> Seq.filter (fun s -> s.Length > 0)
-        |> Seq.distinct
-        |> Seq.toList
-
-let getProperties subDir =
-    Directory.EnumerateFiles(testDir subDir, "*.fs*")
-    |> Seq.toList
-    |> List.collect getTagsOfFile
-
 let test dirName phases (p: Permutation) =
     let dir = (testDir dirName)
     let cfg = suiteHelpers.Value
@@ -33,9 +18,9 @@ let test dirName phases (p: Permutation) =
 
 let allPermutations = NUnitConf.allPermutation
 
-let getCategories subdir =
+let getCategories subDir =
     let group = "core"
-    [group; subdir] @ (getProperties subdir)
+    [group; subDir] @ (testDir subDir |> getProperties)
 
 module Access =
     let permutations = allPermutations |> createTestCaseData (getCategories "access") []

@@ -128,3 +128,18 @@ let allPermutation =
       FRENCH; SPANISH;
       AS_DLL; 
       WRAPPER_NAMESPACE; WRAPPER_NAMESPACE_OPT ]
+
+let getTagsOfFile path =
+    match File.ReadLines(path) |> Seq.tryFind (fun _ -> true) with
+    | None -> []
+    | Some line -> 
+        line.TrimStart('/').Split([| '#' |], StringSplitOptions.RemoveEmptyEntries)
+        |> Seq.map (fun s -> s.Trim())
+        |> Seq.filter (fun s -> s.Length > 0)
+        |> Seq.distinct
+        |> Seq.toList
+
+let getProperties dir =
+    Directory.EnumerateFiles(dir, "*.fs*")
+    |> Seq.toList
+    |> List.collect getTagsOfFile
