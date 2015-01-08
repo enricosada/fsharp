@@ -9,54 +9,52 @@ open SingleTestBuild
 open SingleTestRun
 open NUnitConf
 
-let testDir subDir = Path.Combine(__SOURCE_DIRECTORY__, subDir)
-
-let test dirName phases (p: Permutation) =
-    let dir = (testDir dirName)
+let test phases (p: Permutation) =
+    let dir = NUnit.Framework.TestContext.CurrentContext.Test.Properties.["DIRECTORY"] :?> string
     let cfg = suiteHelpers.Value
     phases |> List.iter (fun phase -> phase cfg dir p)
 
 let allPermutations = NUnitConf.allPermutation
 
-let getCategories = NUnitConf.getCategories testDir "core"
+let createTestCaseData name = NUnitConf.createTestCaseData ("core", name)
 
 module Access =
-    let permutations = allPermutations |> createTestCaseData (getCategories "access") Map.empty
+    let permutations = allPermutations |> createTestCaseData "access"
 
     [<Test; TestCaseSource("permutations")>]
     let access p = 
-        p |> test "access" [singleTestBuild; singleTestRun]
+        p |> test [singleTestBuild; singleTestRun]
 
 module Apporder = 
-    let permutations = allPermutations |> createTestCaseData (getCategories "apporder") Map.empty
+    let permutations = allPermutations |> createTestCaseData "apporder"
 
     [<Test; TestCaseSource("permutations")>]
     let apporder p = 
-        p |> test "apporder" [singleTestBuild; singleTestRun]
+        p |> test [singleTestBuild; singleTestRun]
 
 module Attributes = 
-    let permutations = allPermutations |> createTestCaseData (getCategories "attributes") Map.empty
+    let permutations = allPermutations |> createTestCaseData "attributes"
 
     [<Test; TestCaseSource("permutations")>]
     let attributes p = 
-        p |> test "attributes" [singleTestBuild; singleTestRun]
+        p |> test [singleTestBuild; singleTestRun]
 
 module Comprehensions = 
-    let permutations = allPermutations |> createTestCaseData (getCategories "comprehensions") Map.empty
+    let permutations = allPermutations |> createTestCaseData "comprehensions"
 
     [<Test; TestCaseSource("permutations")>]
     let comprehensions p = 
-        p |> test "comprehensions" [singleTestBuild; singleTestRun]
+        p |> test [singleTestBuild; singleTestRun]
 
 module ControlWpf = 
-    let permutations = allPermutations |> createTestCaseData (getCategories "controlwpf") Map.empty
+    let permutations = allPermutations |> createTestCaseData "controlwpf"
 
     [<Test; TestCaseSource("permutations")>]
     let controlWpf p = 
-        p |> test "controlWpf" [singleTestBuild; singleTestRun]
+        p |> test [singleTestBuild; singleTestRun]
 
 module Events = 
-    let permutations = allPermutations |> createTestCaseData (getCategories "events") Map.empty
+    let permutations = allPermutations |> createTestCaseData "events"
 
     let failIfError = function
     | OK -> ()
@@ -123,5 +121,5 @@ module Events =
     [<Test; TestCaseSource("permutations")>]
     let events p =
         let checkFailure f c d = (f c d) >> failIfError
-        p |> test "events" [build |> checkFailure; run |> checkFailure]
+        p |> test [build |> checkFailure; run |> checkFailure]
 

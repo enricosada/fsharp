@@ -108,18 +108,6 @@ type public InitializeSuiteAttribute () =
 
 open All
 
-let createTestCaseData categories properties list =
-    let testCaseData (p: Permutation) =
-        let name = sprintf "%A" p
-        let tc = new TestCaseData( p )
-        tc.SetName(name) |> ignore
-        tc.SetCategory(sprintf "%A" p) |> ignore
-        categories |> List.iter (fun (c: string) -> tc.Categories.Add(c) |> ignore)
-        properties |> Map.iter (fun k v -> tc.Properties.Add(k,v))
-        tc    
-    list
-    |> Seq.map testCaseData
-
 let allPermutation = 
     [ FSI_FILE; FSI_STDIN; FSI_STDIN_OPT; FSI_STDIN_GUI;
       FSC_BASIC; FSC_HW; FSC_O3;
@@ -139,10 +127,24 @@ let getTagsOfFile path =
         |> Seq.distinct
         |> Seq.toList
 
-let getProperties dir =
+let getTestFileMetadata dir =
     Directory.EnumerateFiles(dir, "*.fs*")
     |> Seq.toList
     |> List.collect getTagsOfFile
 
-let getCategories testDir group subDir =
-    [group; subDir] @ (testDir subDir |> getProperties)
+let createTestCaseData (group,name) list =
+    let testDir = Path.Combine(__SOURCE_DIRECTORY__, group, name)
+    let categories = [group; name] @ (testDir |> getTestFileMetadata)
+    let properties = [ "DIRECTORY", testDir ] |> Map.ofList
+
+    let testCaseData (p: Permutation) =
+        let name = sprintf "%A" p
+        let tc = new TestCaseData( p )
+        tc.SetName(name) |> ignore
+        tc.SetCategory(sprintf "%A" p) |> ignore
+        categories |> List.iter (fun (c: string) -> tc.Categories.Add(c) |> ignore)
+        properties |> Map.iter (fun k v -> tc.Properties.Add(k,v))
+        tc    
+    
+    list
+    |> Seq.map testCaseData
