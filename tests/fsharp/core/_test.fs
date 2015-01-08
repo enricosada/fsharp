@@ -15,7 +15,7 @@ let getTagsOfFile path =
     match File.ReadLines(path) |> Seq.tryFind (fun _ -> true) with
     | None -> []
     | Some line -> 
-        line.TrimStart([|'/'|]).Split([| '#' |], StringSplitOptions.RemoveEmptyEntries)
+        line.TrimStart('/').Split([| '#' |], StringSplitOptions.RemoveEmptyEntries)
         |> Seq.map (fun s -> s.Trim())
         |> Seq.filter (fun s -> s.Length > 0)
         |> Seq.distinct
@@ -33,43 +33,47 @@ let test dirName phases (p: Permutation) =
 
 let allPermutations = NUnitConf.allPermutation
 
+let getCategories subdir =
+    let group = "core"
+    [group; subdir] @ (getProperties subdir)
+
 module Access =
-    let permutations = allPermutations |> createTestCaseData (["core";"access"] @ (getProperties "access")) []
+    let permutations = allPermutations |> createTestCaseData (getCategories "access") []
 
     [<Test; TestCaseSource("permutations")>]
     let access p = 
         p |> test "access" [singleTestBuild; singleTestRun]
 
 module Apporder = 
-    let permutations = allPermutations |> createTestCaseData (["core";"apporder"] @ (getProperties "apporder")) []
+    let permutations = allPermutations |> createTestCaseData (getCategories "apporder") []
 
     [<Test; TestCaseSource("permutations")>]
     let apporder p = 
         p |> test "apporder" [singleTestBuild; singleTestRun]
 
 module Attributes = 
-    let permutations = allPermutations |> createTestCaseData  (["core";"attributes"] @ (getProperties "attributes")) []
+    let permutations = allPermutations |> createTestCaseData (getCategories "attributes") []
 
     [<Test; TestCaseSource("permutations")>]
     let attributes p = 
         p |> test "attributes" [singleTestBuild; singleTestRun]
 
 module Comprehensions = 
-    let permutations = allPermutations |> createTestCaseData  (["core";"comprenhensions"] @ (getProperties "comprehensions")) []
+    let permutations = allPermutations |> createTestCaseData  (getCategories "comprehensions") []
 
     [<Test; TestCaseSource("permutations")>]
     let comprehensions p = 
         p |> test "comprehensions" [singleTestBuild; singleTestRun]
 
 module ControlWpf = 
-    let permutations = allPermutations |> createTestCaseData  (["core";"controlwpf"] @ (getProperties "controlwpf")) []
+    let permutations = allPermutations |> createTestCaseData  (getCategories "controlwpf") []
 
     [<Test; TestCaseSource("permutations")>]
     let controlWpf p = 
         p |> test "controlWpf" [singleTestBuild; singleTestRun]
 
 module Events = 
-    let permutations = allPermutations |> createTestCaseData  (["core";"events"] @ (getProperties "events")) []
+    let permutations = allPermutations |> createTestCaseData  (getCategories "events") []
 
     let failIfError = function
     | OK -> ()
