@@ -442,21 +442,21 @@ let singleTestRun config testDir =
     //:Ok
     let doneOK () =
         //echo Ran fsharp %~f0 ok.
-        echo "Ran fsharp %s ok." testDir
+        printfn "Ran fsharp %s ok." testDir
         //exit /b 0
         ()
 
     //:Skip
     let doneSkipped msg =
         //echo Skipped %~f0
-        echo "Skipped %s" testDir
+        printfn "Skipped %s" testDir
         //exit /b 0
         Assert.Ignore (sprintf "skipped. Reason: %s" msg)
 
     //:Error
     let doneError err msg =
         //echo %ERRORMSG%
-        echo "%s" msg
+        printfn "%s" msg
         //exit /b %ERRORLEVEL% 
         Assert.Fail (sprintf "ERRORLEVEL %i %s" err msg)
 

@@ -71,11 +71,9 @@ module Events =
         let fsc = Commands.fsc exec cfg.FSC
         let peverify = Commands.peverify exec cfg.PEVERIFY
         let csc = Commands.csc exec cfg.CSC
-        let fsc_flags = cfg.fsc_flags
-        let FSharpCoreDllPath = cfg.FSCOREDLLPATH
 
         // "%FSC%" %fsc_flags% -a -o:test.dll -g test.fs
-        match fsc (sprintf "%s -a -o:test.dll -g" fsc_flags) ["test.fs"] with
+        match fsc (sprintf "%s -a -o:test.dll -g" cfg.fsc_flags) ["test.fs"] with
         | ErrorLevel err -> Error (err, "fsc failed")
             // @if ERRORLEVEL 1 goto Error
         | Ok ->
@@ -85,7 +83,7 @@ module Events =
                 // @if ERRORLEVEL 1 goto Error
             | Ok ->
                 // %CSC% /r:"%FSCOREDLLPATH%" /reference:test.dll /debug+ testcs.cs
-                match csc (sprintf """/r:"%s" /reference:test.dll /debug+""" FSharpCoreDllPath) ["testcs.cs"] with
+                match csc (sprintf """/r:"%s" /reference:test.dll /debug+""" cfg.FSCOREDLLPATH) ["testcs.cs"] with
                 | ErrorLevel err -> Error (err, "csc failed")
                     // @if ERRORLEVEL 1 goto Error
                 | Ok ->

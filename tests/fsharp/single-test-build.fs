@@ -110,7 +110,7 @@ let singleTestBuild cfg testDir =
     //:Ok
     let doneOk () =
         //echo Built fsharp %~f0 ok.
-        echo "Built fsharp %s ok." testDir
+        printfn "Built fsharp %s ok." testDir
         //echo. > build.ok
         echo_tofile Environment.NewLine "build.ok"
         //endlocal
@@ -120,7 +120,7 @@ let singleTestBuild cfg testDir =
     //:Skip
     let doneSkipped () =
         //echo Skipped %~f0
-        echo "Skipped %s" testDir
+        printfn "Skipped %s" testDir
         //endlocal
         //exit /b 0
         ()
@@ -155,7 +155,7 @@ let singleTestBuild cfg testDir =
 
     let doNOOP () =
         //@echo No build action to take for this permutation
-        echo "No build action to take for this permutation"
+        printfn "No build action to take for this permutation"
         OK
 
     let doBasic () = 
@@ -220,7 +220,7 @@ let singleTestBuild cfg testDir =
             | None -> Skipped "not found test.ml"
             | Some _ ->
                 //  echo Generating interface file...
-                echo "%s" "Generating interface file..."
+                printfn "Generating interface file..."
                 //  copy /y %source1% tmptest.ml
                 source1 |> Option.iter (fun from -> copy_y from "tmptest.ml")
                 //  REM NOTE: use --generate-interface-file since results may be in Unicode
@@ -230,7 +230,7 @@ let singleTestBuild cfg testDir =
                 | ErrorLevel err -> Error (err, genericErrorMessage)
                 | Success ->
                     //  echo Compiling against generated interface file...
-                    echo "%s" "Compiling against generated interface file..."
+                    printfn "Compiling against generated interface file..."
                     //  "%FSC%" %fsc_flags% -o:tmptest1.exe tmptest.mli tmptest.ml
                     //  if ERRORLEVEL 1 goto Error
                     match fsc (sprintf "%s -o:tmptest1.exe" fsc_flags) ["tmptest.mli";"tmptest.ml"] with
@@ -254,7 +254,7 @@ let singleTestBuild cfg testDir =
             | None -> Skipped "not found test.ml"
             | Some _ ->
                 // echo Compiling against empty interface file...
-                echo "%s" "Compiling against empty interface file..."
+                printfn "%s" "Compiling against empty interface file..."
                 // echo // empty file  > tmptest2.mli
                 echo_tofile "// empty file" "tmptest2.mli"
                 // copy /y %source1% tmptest2.ml
@@ -283,7 +283,7 @@ let singleTestBuild cfg testDir =
             | None -> Skipped "not found test.ml"
             | Some _ ->
                 // echo Compiling against empty interface file...
-                echo "%s" "Compiling against empty interface file..."
+                printfn "Compiling against empty interface file..."
                 // echo // empty file  > tmptest2.mli
                 echo_tofile "// empty file" "tmptest2.mli"
                 // copy /y %source1% tmptest2.ml
@@ -368,7 +368,7 @@ let singleTestBuild cfg testDir =
             | None -> Skipped "not found test.ml"
             | Some _ -> 
                 // echo Compiling when wrapped in a namespace declaration...
-                echo "%s" "Compiling when wrapped in a namespace declaration..."
+                printfn "Compiling when wrapped in a namespace declaration..."
                 // echo module TestNamespace.TestModule > tmptest3.ml
                 echo_tofile "module TestNamespace.TestModule" "tmptest3.ml"
                 // type %source1%  >> tmptest3.ml
@@ -396,7 +396,7 @@ let singleTestBuild cfg testDir =
             | None -> Skipped "not found test.ml"
             | Some _ ->
                 // echo Compiling when wrapped in a namespace declaration...
-                echo "%s" "Compiling when wrapped in a namespace declaration..."
+                printfn "Compiling when wrapped in a namespace declaration..."
                 // echo module TestNamespace.TestModule > tmptest3.ml
                 echo_tofile "module TestNamespace.TestModule" "tmptest3.ml"
                 // type %source1%  >> tmptest3.ml

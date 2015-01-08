@@ -200,7 +200,7 @@ let config envVars =
     let mutable FSCBinPath =
         match env "FSCBinPath" with
         | Some p -> Some p
-        | None -> whereCommand "fsc.exe" |> Option.map Path.GetDirectoryName
+        | None -> Commands.where "fsc.exe" |> Option.map Path.GetDirectoryName
 
     // SET CLIFLAVOUR=cli\4.5
     let CLIFLAVOUR = @"cli\4.5"
@@ -494,32 +494,32 @@ let config envVars =
     
 
 let logConfig (cfg: TestConfig) =
-    echo "%s" "---------------------------------------------------------------"
-    echo "%s" "Executables"
-    echo "%s" ""
-    echo "ALINK               =%A" cfg.ALINK
-    echo "CORDIR              =%A" cfg.CORDIR
-    echo "CORSDK              =%A" cfg.CORSDK
-    echo "CSC                 =%A" cfg.CSC
-    echo "csc_flags           =%A" cfg.csc_flags
-    echo "FSC                 =%A" cfg.FSC
-    echo "fsc_flags           =%A" cfg.fsc_flags
-    echo "FSCBinPath          =%A" cfg.FSCBinPath
-    echo "FSCOREDLL20PATH     =%A" cfg.FSCOREDLL20PATH
-    echo "FSCOREDLLPATH       =%A" cfg.FSCOREDLLPATH
-    echo "FSCOREDLLPORTABLEPATH =%A" cfg.FSCOREDLLPORTABLEPATH
-    echo "FSCOREDLLNETCOREPATH=%A" cfg.FSCOREDLLNETCOREPATH
-    echo "FSCOREDLLNETCORE78PATH=%A" cfg.FSCOREDLLNETCORE78PATH
-    echo "FSCOREDLLNETCORE259PATH=%A" cfg.FSCOREDLLNETCORE259PATH
-    echo "FSDATATPPATH        =%A" cfg.FSDATATPPATH
-    echo "FSDIFF              =%A" cfg.FSDIFF
-    echo "FSI                 =%A" cfg.FSI
-    echo "fsi_flags           =%A" cfg.fsi_flags
-    echo "GACUTIL             =%A" cfg.GACUTIL
-    echo "ILDASM              =%A" cfg.ILDASM
-    echo "INSTALL_SKU         =%A" cfg.INSTALL_SKU
-    echo "MSBUILDTOOLSPATH    =%A" cfg.MSBUILDTOOLSPATH
-    echo "NGEN                =%A" cfg.NGEN
-    echo "PEVERIFY            =%A" cfg.PEVERIFY
-    echo "RESGEN              =%A" cfg.RESGEN
-    echo "---------------------------------------------------------------"
+    printfn "%s" "---------------------------------------------------------------"
+    printfn "%s" "Executables"
+    printfn "%s" ""
+    printfn "ALINK               =%A" cfg.ALINK
+    printfn "CORDIR              =%A" cfg.CORDIR
+    printfn "CORSDK              =%A" cfg.CORSDK
+    printfn "CSC                 =%A" cfg.CSC
+    printfn "csc_flags           =%A" cfg.csc_flags
+    printfn "FSC                 =%A" cfg.FSC
+    printfn "fsc_flags           =%A" cfg.fsc_flags
+    printfn "FSCBinPath          =%A" cfg.FSCBinPath
+    printfn "FSCOREDLL20PATH     =%A" cfg.FSCOREDLL20PATH
+    printfn "FSCOREDLLPATH       =%A" cfg.FSCOREDLLPATH
+    printfn "FSCOREDLLPORTABLEPATH =%A" cfg.FSCOREDLLPORTABLEPATH
+    printfn "FSCOREDLLNETCOREPATH=%A" cfg.FSCOREDLLNETCOREPATH
+    printfn "FSCOREDLLNETCORE78PATH=%A" cfg.FSCOREDLLNETCORE78PATH
+    printfn "FSCOREDLLNETCORE259PATH=%A" cfg.FSCOREDLLNETCORE259PATH
+    printfn "FSDATATPPATH        =%A" cfg.FSDATATPPATH
+    printfn "FSDIFF              =%A" cfg.FSDIFF
+    printfn "FSI                 =%A" cfg.FSI
+    printfn "fsi_flags           =%A" cfg.fsi_flags
+    printfn "GACUTIL             =%A" cfg.GACUTIL
+    printfn "ILDASM              =%A" cfg.ILDASM
+    printfn "INSTALL_SKU         =%A" cfg.INSTALL_SKU
+    printfn "MSBUILDTOOLSPATH    =%A" cfg.MSBUILDTOOLSPATH
+    printfn "NGEN                =%A" cfg.NGEN
+    printfn "PEVERIFY            =%A" cfg.PEVERIFY
+    printfn "RESGEN              =%A" cfg.RESGEN
+    printfn "---------------------------------------------------------------"

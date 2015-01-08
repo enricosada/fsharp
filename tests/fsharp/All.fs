@@ -72,27 +72,10 @@ let exec' cmdArgs (workDir: FilePath) envs (path: FilePath) arguments =
     | 0 -> Success
     | err -> ErrorLevel err
 
-let whereCommand cmd =
-    let result = ref None
-    let lastLine = function null -> () | l -> result := Some l
-
-    let cmdArgs = {
-        RedirectOutput = Some lastLine;
-        RedirectError = None;
-        RedirectInput = None;
-    }
-    
-    match exec' cmdArgs (Path.GetTempPath()) Map.empty "cmd.exe" (sprintf "/c where %s" cmd) with
-    | ErrorLevel _ -> None
-    | OK -> !result    
-
 let fileExists path = if path |> File.Exists then Some path else None
 
 type BuildResult = OK | Error of int
 type RunResult = OK | Error of (int * string) | Skipped of string
-
-
-let echo = printfn
 
 
 type TestConfig = {
