@@ -19,5 +19,77 @@ let parseProcessorArchitecture (s: string) =
 //  %~xi	-   expands %i to a file extension only
 //  %~si	-   expanded path contains short names only
 
-let inline (/) a b = System.IO.Path.Combine(a,b)
+open System.IO
 
+let inline (/) a b = Path.Combine(a,b)
+
+let fileExists path = if path |> File.Exists then Some path else None
+
+type CmdResult = Success | ErrorLevel of int
+
+type CmdArguments = {
+    RedirectOutput: (string -> unit) option;
+    RedirectError: (string -> unit) option;
+    RedirectInput: (StreamWriter -> unit) option;
+}
+
+type FilePath = string
+
+open System.Diagnostics
+
+let exec' cmdArgs (workDir: FilePath) envs (path: FilePath) arguments =
+    //TODO gestione errore
+    let processInfo = new ProcessStartInfo(path, arguments)
+    processInfo.CreateNoWindow <- true
+    processInfo.UseShellExecute <- false
+    processInfo.WorkingDirectory <- workDir
+
+    let p = new Process()
+    p.EnableRaisingEvents <- true
+    p.StartInfo <- processInfo
+
+    cmdArgs.RedirectOutput
+    |> Option.map (fun f -> (fun (ea: DataReceivedEventArgs) -> ea.Data |> f)) 
+    |> Option.iter (fun newOut ->
+        processInfo.RedirectStandardOutput <- true
+        p.OutputDataReceived.Add newOut
+    )
+
+    cmdArgs.RedirectError 
+    |> Option.map (fun f -> (fun (ea: DataReceivedEventArgs) -> ea.Data |> f)) 
+    |> Option.iter (fun newErr ->
+        processInfo.RedirectStandardError <- true
+        p.ErrorDataReceived.Add newErr
+    )
+
+    cmdArgs.RedirectInput
+    |> Option.iter (fun _ -> p.StartInfo.RedirectStandardInput <- true)
+
+    let exitedAsync (proc: Process) =
+        let tcs = new System.Threading.Tasks.TaskCompletionSource<int>();
+        p.Exited.Add (fun s -> 
+            tcs.TrySetResult(proc.ExitCode) |> ignore
+            proc.Dispose())
+        tcs.Task
+
+    p.Start() |> ignore
+    
+    cmdArgs.RedirectOutput |> Option.iter (fun _ -> p.BeginOutputReadLine())
+    cmdArgs.RedirectError |> Option.iter (fun _ -> p.BeginErrorReadLine())
+
+    cmdArgs.RedirectInput
+    |> Option.iter (fun input ->
+        let pipeInput = async {
+            let inputWriter = p.StandardInput
+            input inputWriter
+            do! inputWriter.FlushAsync () |> Async.AwaitIAsyncResult |> Async.Ignore
+            inputWriter.Close ()
+        }
+        pipeInput |> Async.Start
+    )
+
+    let exitCode = p |> exitedAsync |> Async.AwaitTask |> Async.RunSynchronously
+
+    match exitCode with
+    | 0 -> Success
+    | err -> ErrorLevel err

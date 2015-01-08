@@ -2,15 +2,29 @@ module SingleTestRun
 
 open System
 open System.IO
-open All
 open TestConfig
 open NUnit.Framework
 open PlatformHelpers
-     
+
+let withFileGuard path f =
+    //  if exist test.ok (del /f /q test.ok)
+    path |> fileExists |> Option.iter File.Delete
+    //  %CLIX% "%FSI%" %fsi_flags% < %sources% && (
+    //  dir test.ok > NUL 2>&1 ) || (
+    //  @echo FSI_STDIN failed;
+    //  set ERRORMSG=%ERRORMSG% FSI_STDIN failed;
+    //  )
+    match f () with
+    | ErrorLevel err -> Error (err, sprintf "exit code %i" err)
+    | Success ->
+        match path |> fileExists with
+        | Some _ -> OK
+        | None -> Error (0, sprintf "exit code 0 but %s file doesn't exists" (Path.GetFileName(path)))
+
 let singleTestRun' cfg testDir =
 
     let fullpath path = if Path.IsPathRooted(path) then path else (testDir/path)
-    let fileExists = fullpath >> All.fileExists
+    let fileExists = fullpath >> fileExists
 
     // set sources=
     // if exist testlib.fsi (set sources=%sources% testlib.fsi)

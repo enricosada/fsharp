@@ -3,7 +3,7 @@ module Commands
 open System
 open System.IO
 
-open All
+open PlatformHelpers
 
 let getfullpath workDir path =
     let rooted =
@@ -94,12 +94,12 @@ let convertToShortPath path =
     | ErrorLevel _ -> path
     | Ok -> match !result with None -> path | Some p -> p
 
-let where cmd =
+let where envVars cmd =
     let result = ref None
     let lastLine = function null -> () | l -> result := Some l
 
     let cmdArgs = { RedirectOutput = Some lastLine; RedirectError = None; RedirectInput = None; }
     
-    match exec' cmdArgs (Path.GetTempPath()) Map.empty "cmd.exe" (sprintf "/c where %s" cmd) with
+    match exec' cmdArgs (Path.GetTempPath()) envVars "cmd.exe" (sprintf "/c where %s" cmd) with
     | ErrorLevel _ -> None
     | Success -> !result    

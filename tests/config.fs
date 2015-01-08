@@ -4,9 +4,74 @@ open System
 open System.IO
 open System.Collections.Generic
 
-open All
 open PlatformHelpers
 open Microsoft.Win32
+
+type RunResult = OK | Error of (int * string) | Skipped of string
+
+//type Result<'T> =
+//    | Success of 'T
+//    | Failure of Error
+//and Error = { Message: string }
+//
+//type Attempt<'T> = (unit -> Result<'T>)
+//
+//let succeed x = (fun () -> Success (x)) : Attempt<'T>
+//let fail err = (fun () -> Failure(err)) : Attempt<'T>
+//let runAttempt (a: Attempt<'T>) = a ()
+//
+//let bind (f: Attempt<'T>) (rest: 'T -> Attempt<'U>) : Attempt<'U> =
+//    match runAttempt f with
+//    | Failure (msg) -> fail msg
+//    | Success (res) as v -> rest res
+//
+//let getValue (res: Result<'T>) = 
+//    match res with
+//    | Success v -> v
+//    | Failure err -> failwith err.Message 
+//
+//type ProcessBuilder () =
+//    member b.Return(x) = succeed x
+//    member b.ReturnFrom(x) = x
+//    member b.Bind(p, rest) = bind p rest
+//    member b.Let(p, rest) : Attempt<'T> = rest p
+//
+//type Processor () =
+//    static member Run workflow =
+//        runAttempt workflow
+//
+//let processor = Processor()
+
+
+type TestConfig = {
+    EnvironmentVariables: Map<string,string>
+    ALINK: string;
+    CORDIR: string;
+    CORSDK: string;
+    CSC: string;
+    csc_flags: string;
+    FSC: string;
+    fsc_flags: string;
+    FSCBinPath: string;
+    FSCOREDLL20PATH: string;
+    FSCOREDLLPATH: string;
+    FSCOREDLLPORTABLEPATH: string;
+    FSCOREDLLNETCOREPATH: string;
+    FSCOREDLLNETCORE78PATH: string;
+    FSCOREDLLNETCORE259PATH: string;
+    FSDATATPPATH: string;
+    FSDIFF: string;
+    FSI: string;
+    fsi_flags: string;
+    GACUTIL: string;
+    ILDASM: string;
+    INSTALL_SKU: INSTALL_SKU option;
+    MSBUILDTOOLSPATH: string option;
+    NGEN: string;
+    PEVERIFY: string;
+    RESGEN: string;
+}
+and INSTALL_SKU = Clean | DesktopExpress | WebExpress | Ultimate
 
 let GetSdk81Path sdkIdent =
     let regPath = Path.Combine(@"SOFTWARE\Microsoft\Microsoft SDKs\Windows\v8.1A\", sdkIdent)
@@ -181,6 +246,7 @@ let config envVars =
     let env key = envVars |> Map.tryFind key
     let envOrDefault key def = env key |> Option.fold (fun s t -> t) def
     let envOrFail key = env key |> function Some x -> x | None -> failwithf "environment variable '%s' required " key
+    let where = Commands.where envVars
 
     // set REG_SOFTWARE=HKLM\SOFTWARE
     // IF /I "%PROCESSOR_ARCHITECTURE%"=="AMD64" (set REG_SOFTWARE=%REG_SOFTWARE%\Wow6432Node)
@@ -190,7 +256,7 @@ let config envVars =
     // if not defined FSHARP_HOME set FSHARP_HOME=%SCRIPT_ROOT%..\..
     // for /f %%i in ("%FSHARP_HOME%") do set FSHARP_HOME=%%~fi
     let FSHARP_HOME =
-        envOrDefault "FSHARP_HOME" (SCRIPT_ROOT/"..")
+        envOrDefault "FSHARP_HOME" (SCRIPT_ROOT/".."/"..")
         |> Path.GetFullPath
 
     // REM Do we know where fsc.exe is?
@@ -200,7 +266,7 @@ let config envVars =
     let mutable FSCBinPath =
         match env "FSCBinPath" with
         | Some p -> Some p
-        | None -> Commands.where "fsc.exe" |> Option.map Path.GetDirectoryName
+        | None -> where "fsc.exe" |> Option.map Path.GetDirectoryName
 
     // SET CLIFLAVOUR=cli\4.5
     let CLIFLAVOUR = @"cli\4.5"
@@ -377,10 +443,10 @@ let config envVars =
     //         set fsc_flags=%fsc_flags% --clr-root:%CORDIR%
     //     )
     // )
-//  --clr-root non e' un flag valido di fsc
-//    if not <| (fsc_flags |> Option.exists (fun flags -> flags.Contains("generate-config-file")))  then
-//        if not <| (fsc_flags |> Option.exists (fun flags -> flags.Contains("clr-root"))) then 
-//            fsc_flags <- Some (sprintf "%s --clr-root:%s" (fsc_flags |> Option.fold (fun s t -> t) "") (!CORDIR))
+    //  --clr-root non e' un flag valido di fsc
+    //    if not <| (fsc_flags |> Option.exists (fun flags -> flags.Contains("generate-config-file")))  then
+    //        if not <| (fsc_flags |> Option.exists (fun flags -> flags.Contains("clr-root"))) then 
+    //            fsc_flags <- Some (sprintf "%s --clr-root:%s" (fsc_flags |> Option.fold (fun s t -> t) "") (!CORDIR))
 
     // if "%CORDIR%"=="unknown" set CORDIR=
     if (!CORDIR) = "unknown" then CORDIR := ""
@@ -494,32 +560,35 @@ let config envVars =
     
 
 let logConfig (cfg: TestConfig) =
-    printfn "%s" "---------------------------------------------------------------"
-    printfn "%s" "Executables"
-    printfn "%s" ""
-    printfn "ALINK               =%A" cfg.ALINK
-    printfn "CORDIR              =%A" cfg.CORDIR
-    printfn "CORSDK              =%A" cfg.CORSDK
-    printfn "CSC                 =%A" cfg.CSC
-    printfn "csc_flags           =%A" cfg.csc_flags
-    printfn "FSC                 =%A" cfg.FSC
-    printfn "fsc_flags           =%A" cfg.fsc_flags
-    printfn "FSCBinPath          =%A" cfg.FSCBinPath
-    printfn "FSCOREDLL20PATH     =%A" cfg.FSCOREDLL20PATH
-    printfn "FSCOREDLLPATH       =%A" cfg.FSCOREDLLPATH
-    printfn "FSCOREDLLPORTABLEPATH =%A" cfg.FSCOREDLLPORTABLEPATH
-    printfn "FSCOREDLLNETCOREPATH=%A" cfg.FSCOREDLLNETCOREPATH
-    printfn "FSCOREDLLNETCORE78PATH=%A" cfg.FSCOREDLLNETCORE78PATH
-    printfn "FSCOREDLLNETCORE259PATH=%A" cfg.FSCOREDLLNETCORE259PATH
-    printfn "FSDATATPPATH        =%A" cfg.FSDATATPPATH
-    printfn "FSDIFF              =%A" cfg.FSDIFF
-    printfn "FSI                 =%A" cfg.FSI
-    printfn "fsi_flags           =%A" cfg.fsi_flags
-    printfn "GACUTIL             =%A" cfg.GACUTIL
-    printfn "ILDASM              =%A" cfg.ILDASM
+    printfn "---------------------------------------------------------------"
+    printfn "Executables"
+    printfn ""
+    printfn "ALINK               =%s" cfg.ALINK
+    printfn "CORDIR              =%s" cfg.CORDIR
+    printfn "CORSDK              =%s" cfg.CORSDK
+    printfn "CSC                 =%s" cfg.CSC
+    printfn "csc_flags           =%s" cfg.csc_flags
+    printfn "FSC                 =%s" cfg.FSC
+    printfn "fsc_flags           =%s" cfg.fsc_flags
+    printfn "FSCBinPath          =%s" cfg.FSCBinPath
+    printfn "FSCOREDLL20PATH     =%s" cfg.FSCOREDLL20PATH
+    printfn "FSCOREDLLPATH       =%s" cfg.FSCOREDLLPATH
+    printfn "FSCOREDLLPORTABLEPATH =%s" cfg.FSCOREDLLPORTABLEPATH
+    printfn "FSCOREDLLNETCOREPATH=%s" cfg.FSCOREDLLNETCOREPATH
+    printfn "FSCOREDLLNETCORE78PATH=%s" cfg.FSCOREDLLNETCORE78PATH
+    printfn "FSCOREDLLNETCORE259PATH=%s" cfg.FSCOREDLLNETCORE259PATH
+    printfn "FSDATATPPATH        =%s" cfg.FSDATATPPATH
+    printfn "FSDIFF              =%s" cfg.FSDIFF
+    printfn "FSI                 =%s" cfg.FSI
+    printfn "fsi_flags           =%s" cfg.fsi_flags
+    printfn "GACUTIL             =%s" cfg.GACUTIL
+    printfn "ILDASM              =%s" cfg.ILDASM
     printfn "INSTALL_SKU         =%A" cfg.INSTALL_SKU
     printfn "MSBUILDTOOLSPATH    =%A" cfg.MSBUILDTOOLSPATH
-    printfn "NGEN                =%A" cfg.NGEN
-    printfn "PEVERIFY            =%A" cfg.PEVERIFY
-    printfn "RESGEN              =%A" cfg.RESGEN
+    printfn "NGEN                =%s" cfg.NGEN
+    printfn "PEVERIFY            =%s" cfg.PEVERIFY
+    printfn "RESGEN              =%s" cfg.RESGEN
     printfn "---------------------------------------------------------------"
+
+type Permutation = FSI_FILE | FSI_STDIN | FSI_STDIN_OPT | FSI_STDIN_GUI | FSC_BASIC | FSC_BASIC_64 | FSC_HW | FSC_O3 | GENERATED_SIGNATURE | EMPTY_SIGNATURE | EMPTY_SIGNATURE_OPT | FSC_OPT_MINUS_DEBUG | FSC_OPT_PLUS_DEBUG | FRENCH | SPANISH | AS_DLL | WRAPPER_NAMESPACE | WRAPPER_NAMESPACE_OPT
+

@@ -3,7 +3,7 @@ module ``FSharp-Tests-Core``
 open System
 open System.IO
 open NUnit.Framework
-open All
+
 open TestConfig
 open SingleTestBuild
 open SingleTestRun

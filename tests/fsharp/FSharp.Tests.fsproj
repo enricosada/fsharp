@@ -40,7 +40,6 @@
   </PropertyGroup>
   <Import Project="$(FSharpSourcesRoot)\FSharpSource.targets" />
   <ItemGroup>
-    <Compile Include="All.fs" />
     <Compile Include="PlatformHelpers.fs" />
     <Compile Include="Commands.fs" />
     <Compile Include="..\config.fs">

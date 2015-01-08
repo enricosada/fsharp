@@ -2,7 +2,6 @@ module UpdateCmd
 
 open System.IO
 
-open All
 open PlatformHelpers
 open Commands
 open NUnit.Framework

@@ -6,7 +6,7 @@ open NUnit.Framework
 
 open UpdateCmd
 open TestConfig
-open All
+open PlatformHelpers
 
 let envVars () = 
     System.Environment.GetEnvironmentVariables () 
@@ -105,8 +105,6 @@ type public InitializeSuiteAttribute () =
 
 [<assembly:InitializeSuite()>]
 ()
-
-open All
 
 let allPermutation = 
     [ FSI_FILE; FSI_STDIN; FSI_STDIN_OPT; FSI_STDIN_GUI;

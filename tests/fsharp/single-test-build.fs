@@ -5,7 +5,6 @@ open System.IO
 open System.Diagnostics
 
 open NUnit.Framework
-open All
 open TestConfig
 open PlatformHelpers
 
