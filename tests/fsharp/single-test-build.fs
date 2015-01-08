@@ -94,9 +94,9 @@ let singleTestBuild cfg testDir =
     //)
     ignore "permutations useless because build type is an input"
 
-    let loglines = printfn "%s"
+    let loglines = log "%s"
     let exec exe args =
-        printfn "%s %s" exe args
+        log "%s %s" exe args
         exec' { RedirectOutput = Some loglines; RedirectError = Some loglines; RedirectInput = None; } testDir cfg.EnvironmentVariables exe args
 
     let echo_tofile = Commands.echo_tofile testDir
@@ -105,13 +105,14 @@ let singleTestBuild cfg testDir =
     let fsc = Commands.fsc exec cfg.FSC
     let fsc_flags = cfg.fsc_flags
     let peverify = Commands.peverify exec cfg.PEVERIFY
+    let ``echo._tofile`` = Commands.``echo._tofile`` testDir
 
     //:Ok
     let doneOk () =
         //echo Built fsharp %~f0 ok.
-        printfn "Built fsharp %s ok." testDir
+        log "Built fsharp %s ok." testDir
         //echo. > build.ok
-        echo_tofile Environment.NewLine "build.ok"
+        ``echo._tofile`` " " "build.ok"
         //endlocal
         //exit /b 0
         ()
@@ -119,7 +120,7 @@ let singleTestBuild cfg testDir =
     //:Skip
     let doneSkipped () =
         //echo Skipped %~f0
-        printfn "Skipped %s" testDir
+        log "Skipped %s" testDir
         //endlocal
         //exit /b 0
         ()
@@ -154,7 +155,7 @@ let singleTestBuild cfg testDir =
 
     let doNOOP () =
         //@echo No build action to take for this permutation
-        printfn "No build action to take for this permutation"
+        log "No build action to take for this permutation"
         OK
 
     let doBasic () = 
@@ -219,7 +220,7 @@ let singleTestBuild cfg testDir =
             | None -> Skipped "not found test.ml"
             | Some _ ->
                 //  echo Generating interface file...
-                printfn "Generating interface file..."
+                log "Generating interface file..."
                 //  copy /y %source1% tmptest.ml
                 source1 |> Option.iter (fun from -> copy_y from "tmptest.ml")
                 //  REM NOTE: use --generate-interface-file since results may be in Unicode
@@ -229,7 +230,7 @@ let singleTestBuild cfg testDir =
                 | ErrorLevel err -> Error (err, genericErrorMessage)
                 | Success ->
                     //  echo Compiling against generated interface file...
-                    printfn "Compiling against generated interface file..."
+                    log "Compiling against generated interface file..."
                     //  "%FSC%" %fsc_flags% -o:tmptest1.exe tmptest.mli tmptest.ml
                     //  if ERRORLEVEL 1 goto Error
                     match fsc (sprintf "%s -o:tmptest1.exe" fsc_flags) ["tmptest.mli";"tmptest.ml"] with
@@ -253,9 +254,9 @@ let singleTestBuild cfg testDir =
             | None -> Skipped "not found test.ml"
             | Some _ ->
                 // echo Compiling against empty interface file...
-                printfn "%s" "Compiling against empty interface file..."
+                log "Compiling against empty interface file..."
                 // echo // empty file  > tmptest2.mli
-                echo_tofile "// empty file" "tmptest2.mli"
+                echo_tofile "// empty file  " "tmptest2.mli"
                 // copy /y %source1% tmptest2.ml
                 source1 |> Option.iter (fun from -> copy_y from "tmptest2.ml")
                 // "%FSC%" %fsc_flags% --define:COMPILING_WITH_EMPTY_SIGNATURE -o:tmptest2.exe tmptest2.mli tmptest2.ml
@@ -282,9 +283,9 @@ let singleTestBuild cfg testDir =
             | None -> Skipped "not found test.ml"
             | Some _ ->
                 // echo Compiling against empty interface file...
-                printfn "Compiling against empty interface file..."
+                log "Compiling against empty interface file..."
                 // echo // empty file  > tmptest2.mli
-                echo_tofile "// empty file" "tmptest2.mli"
+                echo_tofile "// empty file  " "tmptest2.mli"
                 // copy /y %source1% tmptest2.ml
                 source1 |> Option.iter (fun from -> copy_y from "tmptest2.ml")
                 // "%FSC%" %fsc_flags% --define:COMPILING_WITH_EMPTY_SIGNATURE --optimize -o:tmptest2--optimize.exe tmptest2.mli tmptest2.ml
@@ -367,9 +368,9 @@ let singleTestBuild cfg testDir =
             | None -> Skipped "not found test.ml"
             | Some _ -> 
                 // echo Compiling when wrapped in a namespace declaration...
-                printfn "Compiling when wrapped in a namespace declaration..."
+                log "Compiling when wrapped in a namespace declaration..."
                 // echo module TestNamespace.TestModule > tmptest3.ml
-                echo_tofile "module TestNamespace.TestModule" "tmptest3.ml"
+                echo_tofile "module TestNamespace.TestModule " "tmptest3.ml"
                 // type %source1%  >> tmptest3.ml
                 source1 |> Option.iter (fun from -> type_append_tofile from "tmptest3.ml")
                 // "%FSC%" %fsc_flags% -o:tmptest3.exe tmptest3.ml
@@ -395,9 +396,9 @@ let singleTestBuild cfg testDir =
             | None -> Skipped "not found test.ml"
             | Some _ ->
                 // echo Compiling when wrapped in a namespace declaration...
-                printfn "Compiling when wrapped in a namespace declaration..."
+                log "Compiling when wrapped in a namespace declaration..."
                 // echo module TestNamespace.TestModule > tmptest3.ml
-                echo_tofile "module TestNamespace.TestModule" "tmptest3.ml"
+                echo_tofile "module TestNamespace.TestModule " "tmptest3.ml"
                 // type %source1%  >> tmptest3.ml
                 source1 |> Option.iter (fun from -> type_append_tofile from "tmptest3.ml")
                 // "%FSC%" %fsc_flags% --optimize -o:tmptest3--optimize.exe tmptest3.ml

@@ -98,9 +98,9 @@ let singleTestRun' cfg testDir =
     // REM THE TESTS
     // REM =========================================
 
-    let loglines = printfn "%s"
+    let loglines = log "%s"
     let exec exe args = 
-        printfn "%s %s" exe args
+        log "%s %s" exe args
         exec' { RedirectOutput = Some loglines; RedirectError = Some loglines; RedirectInput = None; } testDir cfg.EnvironmentVariables exe args
 
     let execIn input exe args = 
@@ -109,18 +109,16 @@ let singleTestRun' cfg testDir =
     let clix exe args = exec (testDir/exe) args
     let fsi = Commands.fsi exec cfg.FSI
     let fsiIn flags sources =
+        log "%s %s < %s" cfg.FSI flags (sources |> Seq.ofList |> String.concat " ")
         let inputs = sources |> List.map fullpath
         inputs
         |> List.map (fun p -> (p, p |> fileExists))
         |> List.tryPick (function p, None -> Some p | _, Some _ -> None)
         |> function
            | Some p ->
-               printfn "redirected file '%s' not found" p
+               log "redirected file '%s' not found" p
                ErrorLevel -1
-           | None -> 
-               printf "%s %s" cfg.FSI flags
-               inputs |> List.iter (fun p -> printf " < %s " p)
-               printfn ""
+           | None ->
                Commands.fsiIn execIn cfg.FSI flags inputs
 
     let fsi_flags = cfg.fsi_flags
@@ -456,21 +454,21 @@ let singleTestRun config testDir =
     //:Ok
     let doneOK () =
         //echo Ran fsharp %~f0 ok.
-        printfn "Ran fsharp %s ok." testDir
+        log "Ran fsharp %s ok." testDir
         //exit /b 0
         ()
 
     //:Skip
     let doneSkipped msg =
         //echo Skipped %~f0
-        printfn "Skipped %s" testDir
+        log "Skipped %s" testDir
         //exit /b 0
         Assert.Ignore (sprintf "skipped. Reason: %s" msg)
 
     //:Error
     let doneError err msg =
         //echo %ERRORMSG%
-        printfn "%s" msg
+        log "%s" msg
         //exit /b %ERRORLEVEL% 
         Assert.Fail (sprintf "ERRORLEVEL %i %s" err msg)
 

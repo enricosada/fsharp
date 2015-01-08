@@ -93,3 +93,5 @@ let exec' cmdArgs (workDir: FilePath) envs (path: FilePath) arguments =
     match exitCode with
     | 0 -> Success
     | err -> ErrorLevel err
+
+let log format = Printf.ksprintf (fun s -> printfn "%s" s) format

@@ -560,35 +560,35 @@ let config envVars =
     
 
 let logConfig (cfg: TestConfig) =
-    printfn "---------------------------------------------------------------"
-    printfn "Executables"
-    printfn ""
-    printfn "ALINK               =%s" cfg.ALINK
-    printfn "CORDIR              =%s" cfg.CORDIR
-    printfn "CORSDK              =%s" cfg.CORSDK
-    printfn "CSC                 =%s" cfg.CSC
-    printfn "csc_flags           =%s" cfg.csc_flags
-    printfn "FSC                 =%s" cfg.FSC
-    printfn "fsc_flags           =%s" cfg.fsc_flags
-    printfn "FSCBinPath          =%s" cfg.FSCBinPath
-    printfn "FSCOREDLL20PATH     =%s" cfg.FSCOREDLL20PATH
-    printfn "FSCOREDLLPATH       =%s" cfg.FSCOREDLLPATH
-    printfn "FSCOREDLLPORTABLEPATH =%s" cfg.FSCOREDLLPORTABLEPATH
-    printfn "FSCOREDLLNETCOREPATH=%s" cfg.FSCOREDLLNETCOREPATH
-    printfn "FSCOREDLLNETCORE78PATH=%s" cfg.FSCOREDLLNETCORE78PATH
-    printfn "FSCOREDLLNETCORE259PATH=%s" cfg.FSCOREDLLNETCORE259PATH
-    printfn "FSDATATPPATH        =%s" cfg.FSDATATPPATH
-    printfn "FSDIFF              =%s" cfg.FSDIFF
-    printfn "FSI                 =%s" cfg.FSI
-    printfn "fsi_flags           =%s" cfg.fsi_flags
-    printfn "GACUTIL             =%s" cfg.GACUTIL
-    printfn "ILDASM              =%s" cfg.ILDASM
-    printfn "INSTALL_SKU         =%A" cfg.INSTALL_SKU
-    printfn "MSBUILDTOOLSPATH    =%A" cfg.MSBUILDTOOLSPATH
-    printfn "NGEN                =%s" cfg.NGEN
-    printfn "PEVERIFY            =%s" cfg.PEVERIFY
-    printfn "RESGEN              =%s" cfg.RESGEN
-    printfn "---------------------------------------------------------------"
+    log "---------------------------------------------------------------"
+    log "Executables"
+    log ""
+    log "ALINK               =%s" cfg.ALINK
+    log "CORDIR              =%s" cfg.CORDIR
+    log "CORSDK              =%s" cfg.CORSDK
+    log "CSC                 =%s" cfg.CSC
+    log "csc_flags           =%s" cfg.csc_flags
+    log "FSC                 =%s" cfg.FSC
+    log "fsc_flags           =%s" cfg.fsc_flags
+    log "FSCBinPath          =%s" cfg.FSCBinPath
+    log "FSCOREDLL20PATH     =%s" cfg.FSCOREDLL20PATH
+    log "FSCOREDLLPATH       =%s" cfg.FSCOREDLLPATH
+    log "FSCOREDLLPORTABLEPATH =%s" cfg.FSCOREDLLPORTABLEPATH
+    log "FSCOREDLLNETCOREPATH=%s" cfg.FSCOREDLLNETCOREPATH
+    log "FSCOREDLLNETCORE78PATH=%s" cfg.FSCOREDLLNETCORE78PATH
+    log "FSCOREDLLNETCORE259PATH=%s" cfg.FSCOREDLLNETCORE259PATH
+    log "FSDATATPPATH        =%s" cfg.FSDATATPPATH
+    log "FSDIFF              =%s" cfg.FSDIFF
+    log "FSI                 =%s" cfg.FSI
+    log "fsi_flags           =%s" cfg.fsi_flags
+    log "GACUTIL             =%s" cfg.GACUTIL
+    log "ILDASM              =%s" cfg.ILDASM
+    log "INSTALL_SKU         =%A" cfg.INSTALL_SKU
+    log "MSBUILDTOOLSPATH    =%A" cfg.MSBUILDTOOLSPATH
+    log "NGEN                =%s" cfg.NGEN
+    log "PEVERIFY            =%s" cfg.PEVERIFY
+    log "RESGEN              =%s" cfg.RESGEN
+    log "---------------------------------------------------------------"
 
 type Permutation = FSI_FILE | FSI_STDIN | FSI_STDIN_OPT | FSI_STDIN_GUI | FSC_BASIC | FSC_BASIC_64 | FSC_HW | FSC_O3 | GENERATED_SIGNATURE | EMPTY_SIGNATURE | EMPTY_SIGNATURE_OPT | FSC_OPT_MINUS_DEBUG | FSC_OPT_PLUS_DEBUG | FRENCH | SPANISH | AS_DLL | WRAPPER_NAMESPACE | WRAPPER_NAMESPACE_OPT
 

@@ -13,14 +13,22 @@ let getfullpath workDir path =
 
 /// copy /y %source1% tmptest2.ml
 let copy_y workDir source to' = 
+    log "copy /y %s %s" source to'
     File.Copy( source |> getfullpath workDir, to' |> getfullpath workDir, true)
+
+// echo. > build.ok
+let ``echo._tofile`` workDir text p =
+    log "echo.%s> %s" text p
+    let to' = p |> getfullpath workDir in File.WriteAllText(to', text + Environment.NewLine)
 
 /// echo // empty file  > tmptest2.mli
 let echo_tofile workDir text p =
-    let to' = p |> getfullpath workDir in File.WriteAllText(to', text)
+    log "echo %s> %s" text p
+    let to' = p |> getfullpath workDir in File.WriteAllText(to', text + Environment.NewLine)
 
 /// type %source1%  >> tmptest3.ml
 let type_append_tofile workDir source p =
+    log "type %s >> %s" source p
     let from = source |> getfullpath workDir
     let to' = p |> getfullpath workDir
     let contents = File.ReadAllText(to')
@@ -79,6 +87,7 @@ let createTempDir () =
     path
 
 let convertToShortPath path =
+    log "convert to short path %s" path
     let result = ref None
     let lastLine = function null -> () | l -> result := Some l
 
@@ -95,6 +104,7 @@ let convertToShortPath path =
     | Ok -> match !result with None -> path | Some p -> p
 
 let where envVars cmd =
+    log "where %s" cmd
     let result = ref None
     let lastLine = function null -> () | l -> result := Some l
 

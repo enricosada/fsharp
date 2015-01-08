@@ -42,14 +42,13 @@ let initializeSuite () =
             File.AppendAllText (p, """printfn "ciao"; exit 0""")
             p
 
-        let logToConsole = printfn "%s"
         let tempDir = Commands.createTempDir ()
         let exec exe args = 
-            printfn "%s %s" exe args
-            exec' { RedirectError = Some logToConsole; RedirectOutput = Some logToConsole; RedirectInput = None } tempDir envVars exe args
+            log "%s %s" exe args
+            exec' { RedirectError = Some (log "%s"); RedirectOutput = Some (log "%s"); RedirectInput = None } tempDir envVars exe args
         let execIn input exe args = 
-            printfn "%s %s" exe args
-            exec' { RedirectError = Some logToConsole; RedirectOutput = Some logToConsole; RedirectInput = Some input } tempDir envVars exe args
+            log "%s %s" exe args
+            exec' { RedirectError = Some (log "%s"); RedirectOutput = Some (log "%s"); RedirectInput = Some input } tempDir envVars exe args
 
         match Commands.fsc exec cfg.FSC "" [ tempFile ".fs" ] with
         | ErrorLevel _ -> Assert.Fail (sprintf """invalid fsc '%s' """ cfg.FSC)

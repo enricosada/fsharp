@@ -64,10 +64,9 @@ module Events =
     open PlatformHelpers
 
     let build cfg dir p =
-        let loglines = printfn "%s"
         let exec path args =
-            printfn "%s %s" path args
-            exec' { RedirectOutput = Some loglines; RedirectError = Some loglines; RedirectInput = None; } dir cfg.EnvironmentVariables path args
+            log "%s %s" path args
+            exec' { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
         let fsc = Commands.fsc exec cfg.FSC
         let peverify = Commands.peverify exec cfg.PEVERIFY
         let csc = Commands.csc exec cfg.CSC
@@ -94,10 +93,9 @@ module Events =
                     | Ok -> OK
 
     let run cfg dir p =
-        let loglines = printfn "%s" 
         let exec path args = 
-            printfn "%s %s" path args
-            exec' { RedirectOutput = Some loglines; RedirectError = Some loglines; RedirectInput = None; } dir cfg.EnvironmentVariables path args
+            log "%s %s" path args
+            exec' { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
         let clix = exec
         let fsi = Commands.fsi exec cfg.FSI
 
