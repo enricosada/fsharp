@@ -95,3 +95,64 @@ let exec' cmdArgs (workDir: FilePath) envs (path: FilePath) arguments =
     | err -> ErrorLevel err
 
 let log format = Printf.ksprintf (fun s -> printfn "%s" s) format
+
+
+type Result<'S,'F> =
+    | Success of 'S
+    | Failure of 'F
+
+type Attempt<'S,'F> = (unit -> Result<'S,'F>)
+
+let internal succeed x = (fun () -> Success x)
+let internal failed err = (fun () -> Failure err)
+let runAttempt (a: Attempt<_,_>) = a ()
+let delay f = (fun () -> f() |> runAttempt)
+
+let either successTrack failTrack (input : Attempt<_, _>) : Attempt<_, _> =
+    match runAttempt input with
+    | Success s -> successTrack s
+    | Failure f -> failTrack f
+
+let bind successTrack = either successTrack failed
+let fail failTrack result = either succeed failTrack result
+
+type Attempt =
+    static member Run x = runAttempt x
+
+type AttemptBuilder() =
+    member this.Bind(m : Attempt<_, _>, success) = bind success m
+    member this.Bind(m : Result<_, _>, success) = bind success (fun () -> m)
+    member this.Return(x) : Attempt<_, _> = succeed x
+    member this.ReturnFrom(x : Attempt<_, _>) = x
+    member this.Combine(v, f) : Attempt<_, _> = bind f v
+    member this.Yield(x) = Success x
+    member this.YieldFrom(x) = x
+    member this.Delay(f) : Attempt<_, _> = delay f
+    member this.Zero() : Attempt<_, _> = succeed ()
+    member this.While(guard, body: Attempt<_, _>) =
+        if not (guard()) 
+        then this.Zero() 
+        else this.Bind(body, fun () -> 
+            this.While(guard, body))  
+
+    member this.TryWith(body, handler) =
+        try this.ReturnFrom(body())
+        with e -> handler e
+
+    member this.TryFinally(body, compensation) =
+        try this.ReturnFrom(body())
+        finally compensation() 
+
+    member this.Using(disposable:#System.IDisposable, body) =
+        let body' = fun () -> body disposable
+        this.TryFinally(body', fun () -> 
+            match disposable with 
+                | null -> () 
+                | disp -> disp.Dispose())
+
+    member this.For(sequence:seq<'a>, body: 'a -> Attempt<_,_>) =
+        this.Using(sequence.GetEnumerator(),fun enum -> 
+            this.While(enum.MoveNext, 
+                this.Delay(fun () -> body enum.Current)))
+
+let processor = new AttemptBuilder()

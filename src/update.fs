@@ -11,7 +11,7 @@ type Configuration = DEBUG | RELEASE
 
 type updateCmdArgs = { Configuration: Configuration; Ngen: bool; }
 
-let updateCmd envVars args =
+let updateCmd envVars args = processor {
     // @echo off
     // setlocal
     ignore "useless"
@@ -41,11 +41,11 @@ let updateCmd envVars args =
 
     // if /i "%PROCESSOR_ARCHITECTURE%"=="x86" set X86_PROGRAMFILES=%ProgramFiles%
     // if /I "%PROCESSOR_ARCHITECTURE%"=="AMD64" set X86_PROGRAMFILES=%ProgramFiles(x86)%
-    let X86_PROGRAMFILES =
+    let! X86_PROGRAMFILES =
         match PROCESSOR_ARCHITECTURE with
-        | X86 -> env "ProgramFiles"
-        | AMD64 -> env "ProgramFiles(x86)"
-        | arc -> failwithf "unsupported PROCESSOR_ARCHITECTURE %O" arc
+        | X86 -> Success (env "ProgramFiles")
+        | AMD64 -> Success (env "ProgramFiles(x86)")
+        | arc -> Failure (sprintf "unsupported PROCESSOR_ARCHITECTURE %O" arc)
 
     let windir = env "windir"
 
@@ -60,13 +60,13 @@ let updateCmd envVars args =
     // set NGEN64=%windir%\Microsoft.NET\Framework64\v4.0.30319\ngen.exe
     let NGEN64 = windir/"Microsoft.NET"/"Framework64"/"v4.0.30319"/"ngen.exe"
 
-    let gacutil = gacutil exec GACUTIL 
-    let ngen32 = ngen exec NGEN32
-    let ngen64 = ngen exec NGEN64
-    let sn32 = exec SN32
-    let sn64 = exec SN32
+    let checkResult = function CmdResult.ErrorLevel err -> Failure (sprintf "ERRORLEVEL %d" err) | CmdResult.Success -> Success ()
 
-    let checkErrorLevel = function ErrorLevel err -> Assert.Fail (sprintf "ERRORLEVEL %i" err) | Ok -> ()
+    let gacutil flags = gacutil exec GACUTIL flags >> checkResult
+    let ngen32 = ngen exec NGEN32 >> checkResult
+    let ngen64 = ngen exec NGEN64 >> checkResult
+    let sn32 = exec SN32 >> checkResult
+    let sn64 = exec SN32 >> checkResult
 
     // rem Disable strong-name validation for F# binaries built from open source that are signed with the microsoft key
     // %SN32% -Vr FSharp.Core,b03f5f7f11d50a3a
@@ -86,65 +86,68 @@ let updateCmd envVars args =
     // %SN32% -Vr Unittests,b03f5f7f11d50a3a
     // %SN32% -Vr Salsa,b03f5f7f11d50a3a
 
-    let strongName snExe =
-        [ "FSharp.Core";
-        "FSharp.Build";
-        "FSharp.Compiler.Interactive.Settings";"FSharp.Compiler.Hosted";
-        "FSharp.Compiler";"FSharp.Compiler.Server.Shared";
-        "FSharp.Editor";
-        "FSharp.LanguageService";"FSharp.LanguageService.Base";"FSharp.LanguageService.Compiler";
-        "FSharp.ProjectSystem.Base";"FSharp.ProjectSystem.FSharp";"FSharp.ProjectSystem.PropertyPages";
-        "FSharp.VS.FSI";
-        "Unittests";
-        "Salsa" ]
-        |> Seq.ofList
-        |> Seq.iter (fun a -> snExe (sprintf " -Vr %s,b03f5f7f11d50a3a" a) |> checkErrorLevel)
+    let strongName (snExe: string -> Result<_,_>) = processor {
+        let all = 
+            [ "FSharp.Core";
+            "FSharp.Build";
+            "FSharp.Compiler.Interactive.Settings";"FSharp.Compiler.Hosted";
+            "FSharp.Compiler";"FSharp.Compiler.Server.Shared";
+            "FSharp.Editor";
+            "FSharp.LanguageService";"FSharp.LanguageService.Base";"FSharp.LanguageService.Compiler";
+            "FSharp.ProjectSystem.Base";"FSharp.ProjectSystem.FSharp";"FSharp.ProjectSystem.PropertyPages";
+            "FSharp.VS.FSI";
+            "Unittests";
+            "Salsa" ]
+        for a in all do
+            do! snExe (sprintf " -Vr %s,b03f5f7f11d50a3a" a) 
+        }
 
-    strongName sn32
+    do! strongName sn32
         
     //if /i "%PROCESSOR_ARCHITECTURE%"=="AMD64" (
-    if PROCESSOR_ARCHITECTURE = AMD64 then 
-        //  %SN64% -Vr FSharp.Core,b03f5f7f11d50a3a
-        //  %SN64% -Vr FSharp.Build,b03f5f7f11d50a3a
-        //  %SN64% -Vr FSharp.Compiler.Interactive.Settings,b03f5f7f11d50a3a
-        //  %SN64% -Vr FSharp.Compiler.Hosted,b03f5f7f11d50a3a
-        //  %SN64% -Vr FSharp.Compiler,b03f5f7f11d50a3a
-        //  %SN64% -Vr FSharp.Compiler.Server.Shared,b03f5f7f11d50a3a
-        //  %SN64% -Vr FSharp.Editor,b03f5f7f11d50a3a
-        //  %SN64% -Vr FSharp.LanguageService,b03f5f7f11d50a3a
-        //  %SN64% -Vr FSharp.LanguageService.Base,b03f5f7f11d50a3a
-        //  %SN64% -Vr FSharp.LanguageService.Compiler,b03f5f7f11d50a3a
-        //  %SN64% -Vr FSharp.ProjectSystem.Base,b03f5f7f11d50a3a
-        //  %SN64% -Vr FSharp.ProjectSystem.FSharp,b03f5f7f11d50a3a
-        //  %SN64% -Vr FSharp.ProjectSystem.PropertyPages,b03f5f7f11d50a3a
-        //  %SN64% -Vr FSharp.VS.FSI,b03f5f7f11d50a3a
-        //  %SN64% -Vr Unittests,b03f5f7f11d50a3a
-        //  %SN64% -Vr Salsa,b03f5f7f11d50a3a
-        strongName sn64
+    do! if PROCESSOR_ARCHITECTURE = AMD64 then
+            //  %SN64% -Vr FSharp.Core,b03f5f7f11d50a3a
+            //  %SN64% -Vr FSharp.Build,b03f5f7f11d50a3a
+            //  %SN64% -Vr FSharp.Compiler.Interactive.Settings,b03f5f7f11d50a3a
+            //  %SN64% -Vr FSharp.Compiler.Hosted,b03f5f7f11d50a3a
+            //  %SN64% -Vr FSharp.Compiler,b03f5f7f11d50a3a
+            //  %SN64% -Vr FSharp.Compiler.Server.Shared,b03f5f7f11d50a3a
+            //  %SN64% -Vr FSharp.Editor,b03f5f7f11d50a3a
+            //  %SN64% -Vr FSharp.LanguageService,b03f5f7f11d50a3a
+            //  %SN64% -Vr FSharp.LanguageService.Base,b03f5f7f11d50a3a
+            //  %SN64% -Vr FSharp.LanguageService.Compiler,b03f5f7f11d50a3a
+            //  %SN64% -Vr FSharp.ProjectSystem.Base,b03f5f7f11d50a3a
+            //  %SN64% -Vr FSharp.ProjectSystem.FSharp,b03f5f7f11d50a3a
+            //  %SN64% -Vr FSharp.ProjectSystem.PropertyPages,b03f5f7f11d50a3a
+            //  %SN64% -Vr FSharp.VS.FSI,b03f5f7f11d50a3a
+            //  %SN64% -Vr Unittests,b03f5f7f11d50a3a
+            //  %SN64% -Vr Salsa,b03f5f7f11d50a3a
+            strongName sn64
+        else 
+            (fun () -> Success ())
     //)
 
     // rem Only GACing FSharp.Core for now
     // %GACUTIL% /if %BINDIR%\FSharp.Core.dll
-    gacutil "/if" (BINDIR/"FSharp.Core.dll") |> checkErrorLevel
+    do! gacutil "/if" (BINDIR/"FSharp.Core.dll")
 
     // rem NGen fsc, fsi, fsiAnyCpu, and FSharp.Build.dll
     // if /i not "%2"=="-ngen" goto :donengen
 
-    if args.Ngen then (
+    if args.Ngen then
         // "%NGEN32%" install "%BINDIR%\fsc.exe" /queue:1
         // "%NGEN32%" install "%BINDIR%\fsi.exe" /queue:1
         // "%NGEN32%" install "%BINDIR%\FSharp.Build.dll" /queue:1
         // "%NGEN32%" executeQueuedItems 1
-        ngen32 [BINDIR/"fsc.exe"; BINDIR/"fsi.exe"; BINDIR/"FSharp.Build.dll"] |> checkErrorLevel
+        do! ngen32 [BINDIR/"fsc.exe"; BINDIR/"fsi.exe"; BINDIR/"FSharp.Build.dll"]
 
         // if /i "%PROCESSOR_ARCHITECTURE%"=="AMD64" (
         if PROCESSOR_ARCHITECTURE = AMD64 then
             // "%NGEN64%" install "%BINDIR%\fsiAnyCpu.exe" /queue:1
             // "%NGEN64%" install "%BINDIR%\FSharp.Build.dll" /queue:1
             // "%NGEN64%" executeQueuedItems 1
-            ngen64 [BINDIR/"fsiAnyCpu.exe"; BINDIR/"FSharp.Build.dll"] |> checkErrorLevel
+            do! ngen64 [BINDIR/"fsiAnyCpu.exe"; BINDIR/"FSharp.Build.dll"]
         // )
-    )
     //:donengen
-
-    ()
+    
+    }

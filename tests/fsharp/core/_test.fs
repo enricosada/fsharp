@@ -56,66 +56,56 @@ module ControlWpf =
 module Events = 
     let permutations = allPermutations |> createTestCaseData "events"
 
-    let failIfError = function
-    | OK -> ()
-    | Error (err, msg) -> Assert.Fail (sprintf "ERRORLEVEL %i %s" err msg)
-    | Skipped msg -> ()
-
     open PlatformHelpers
 
-    let build cfg dir p =
+    let build cfg dir p = processor {
         let exec path args =
             log "%s %s" path args
             exec' { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
-        let fsc = Commands.fsc exec cfg.FSC
-        let peverify = Commands.peverify exec cfg.PEVERIFY
-        let csc = Commands.csc exec cfg.CSC
+        let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
+        let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
+        let csc args = Commands.csc exec cfg.CSC args >> checkResult
 
         // "%FSC%" %fsc_flags% -a -o:test.dll -g test.fs
-        match fsc (sprintf "%s -a -o:test.dll -g" cfg.fsc_flags) ["test.fs"] with
-        | ErrorLevel err -> Error (err, "fsc failed")
-            // @if ERRORLEVEL 1 goto Error
-        | Ok ->
-            // "%PEVERIFY%" test.dll
-            match peverify "test.dll" with
-            | ErrorLevel err -> Error (err, "peverify failed")
-                // @if ERRORLEVEL 1 goto Error
-            | Ok ->
-                // %CSC% /r:"%FSCOREDLLPATH%" /reference:test.dll /debug+ testcs.cs
-                match csc (sprintf """/r:"%s" /reference:test.dll /debug+""" cfg.FSCOREDLLPATH) ["testcs.cs"] with
-                | ErrorLevel err -> Error (err, "csc failed")
-                    // @if ERRORLEVEL 1 goto Error
-                | Ok ->
-                    // "%PEVERIFY%" testcs.exe
-                    match peverify "testcs.exe" with
-                    | ErrorLevel err -> Error (err, "peverify failed")
-                    // @if ERRORLEVEL 1 goto Error
-                    | Ok -> OK
+        do! fsc (sprintf "%s -a -o:test.dll -g" cfg.fsc_flags) ["test.fs"]
 
-    let run cfg dir p =
+        // "%PEVERIFY%" test.dll
+        do! peverify "test.dll"
+
+        // %CSC% /r:"%FSCOREDLLPATH%" /reference:test.dll /debug+ testcs.cs
+        do! csc (sprintf """/r:"%s" /reference:test.dll /debug+""" cfg.FSCOREDLLPATH) ["testcs.cs"]
+
+        // "%PEVERIFY%" testcs.exe
+        do! peverify "testcs.exe"
+        }
+
+    let run cfg dir p = processor {
         let exec path args = 
             log "%s %s" path args
             exec' { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
-        let clix = exec
-        let fsi = Commands.fsi exec cfg.FSI
+        let clix exe = exec exe >> checkResult
+        let fsi args = Commands.fsi exec cfg.FSI args >> checkResult
 
         // %CLIX% "%FSI%" test.fs && (
-        match withFileGuard (dir/"test.ok") (fun () -> fsi "" ["test.fs"]) with
-        | Error x -> Error x
+        do! withFileGuard (dir/"test.ok") (fun () -> fsi "" ["test.fs"])
+
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :FSI failed;
         // goto Error
         // set ERRORMSG=%ERRORMSG% FSI failed;
         // )
-        | Ok ->
-            // %CLIX% .\testcs.exe
-            match clix (dir/"testcs.exe") "" with
-            | ErrorLevel err -> Error (err, "testcs.exe")
-            // if ERRORLEVEL 1 goto Error
-            | Ok -> OK
+
+        // %CLIX% .\testcs.exe
+        do! clix (dir/"testcs.exe") ""
+        }
 
     [<Test; TestCaseSource("permutations")>]
     let events p =
-        let checkFailure f c d = (f c d) >> failIfError
+        let failIfError = 
+            function
+            | Success () -> ()
+            | Failure (Error (err, msg)) -> Assert.Fail (sprintf "ERRORLEVEL %i %s" err msg)
+            | Failure (Skipped msg) -> Assert.Inconclusive(msg)
+        let checkFailure f c p = (f c p) >> Attempt.Run >> (fun x -> failIfError x)
         p |> test [build |> checkFailure; run |> checkFailure]
 

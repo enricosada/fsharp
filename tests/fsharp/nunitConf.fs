@@ -29,41 +29,45 @@ let initializeSuite () =
     let env = defaults |> join (envVars ())
 
     //TODO check FSCBinPath directory exists
+    processor {
+        do! updateCmd env { Configuration = configurationName; Ngen = doNgen; } |> Attempt.Run
 
-    updateCmd env { Configuration = configurationName; Ngen = doNgen; }
+        let cfg = config env
 
-    let cfg = config env
+        logConfig cfg
 
-    logConfig cfg
+        let smokeTest () = processor {
+            let tempFile ext = 
+                let p = Path.ChangeExtension( Path.GetTempFileName(), ext)
+                File.AppendAllText (p, """printfn "ciao"; exit 0""")
+                p
 
-    let smokeTest () =
-        let tempFile ext = 
-            let p = Path.ChangeExtension( Path.GetTempFileName(), ext)
-            File.AppendAllText (p, """printfn "ciao"; exit 0""")
-            p
+            let tempDir = Commands.createTempDir ()
+            let exec exe args = 
+                log "%s %s" exe args
+                exec' { RedirectError = Some (log "%s"); RedirectOutput = Some (log "%s"); RedirectInput = None } tempDir envVars exe args
+            let execIn input exe args = 
+                log "%s %s" exe args
+                exec' { RedirectError = Some (log "%s"); RedirectOutput = Some (log "%s"); RedirectInput = Some input } tempDir envVars exe args
 
-        let tempDir = Commands.createTempDir ()
-        let exec exe args = 
-            log "%s %s" exe args
-            exec' { RedirectError = Some (log "%s"); RedirectOutput = Some (log "%s"); RedirectInput = None } tempDir envVars exe args
-        let execIn input exe args = 
-            log "%s %s" exe args
-            exec' { RedirectError = Some (log "%s"); RedirectOutput = Some (log "%s"); RedirectInput = Some input } tempDir envVars exe args
+            let checkResult = function CmdResult.ErrorLevel err -> Failure (sprintf "ERRORLEVEL %d" err) | CmdResult.Success -> Success ()
 
-        match Commands.fsc exec cfg.FSC "" [ tempFile ".fs" ] with
-        | ErrorLevel _ -> Assert.Fail (sprintf """invalid fsc '%s' """ cfg.FSC)
-        | Ok -> ()
+            do! Commands.fsc exec cfg.FSC "" [ tempFile ".fs" ] |> checkResult
 
-        match Commands.fsi exec cfg.FSI "" [ tempFile ".fsx" ] with
-        | ErrorLevel e -> Assert.Fail (sprintf """invalid fsi '%s' """ cfg.FSI)
-        | Ok -> ()
+            do! Commands.fsi exec cfg.FSI "" [ tempFile ".fsx" ] |> checkResult
+        
+            }
     
-    smokeTest ()
+        do! smokeTest ()
 
-    cfg
+        return cfg
+    } 
+
 
 let suiteHelpers = lazy (
     initializeSuite ()
+    |> Attempt.Run 
+    |> function Success x -> x | Failure err -> failwith (sprintf "Error %A" err)
 )
 
 [<AttributeUsage(AttributeTargets.Method ||| AttributeTargets.Class ||| AttributeTargets.Interface ||| AttributeTargets.Assembly, AllowMultiple = true)>]
@@ -145,3 +149,4 @@ let createTestCaseData (group,name) list =
     
     list
     |> Seq.map testCaseData
+

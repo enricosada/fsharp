@@ -102,9 +102,9 @@ let singleTestBuild cfg testDir =
     let echo_tofile = Commands.echo_tofile testDir
     let copy_y = Commands.copy_y testDir
     let type_append_tofile = Commands.type_append_tofile testDir
-    let fsc = Commands.fsc exec cfg.FSC
+    let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
     let fsc_flags = cfg.fsc_flags
-    let peverify = Commands.peverify exec cfg.PEVERIFY
+    let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
     let ``echo._tofile`` = Commands.``echo._tofile`` testDir
 
     //:Ok
@@ -145,80 +145,71 @@ let singleTestBuild cfg testDir =
     ///    @if ERRORLEVEL 1 goto Error      <para/>
     /// )                                   <para/>
     /// </summary>
-    let doPeverify cmd = 
-        match testDir/"dont.run.peverify" |> fileExists with
-        | None ->
-            match peverify cmd with
-            | Success -> OK
-            | ErrorLevel err -> Error (err, "peverify error")
-        | Some _ -> Skipped "dont.run.peverify found"
+    let doPeverify cmd = processor { 
+        if testDir/"dont.run.peverify" |> fileExists |> Option.isNone
+        then do! peverify cmd
+        }
 
-    let doNOOP () =
+    let doNOOP () = processor {
         //@echo No build action to take for this permutation
         log "No build action to take for this permutation"
-        OK
+        }
 
-    let doBasic () = 
+    let doBasic () = processor { 
         // FSC %fsc_flags% --define:BASIC_TEST -o:test.exe -g %sources%
         //if ERRORLEVEL 1 goto Error
-        match fsc (sprintf "%s --define:BASIC_TEST -o:test.exe -g" fsc_flags) sources with
-        | ErrorLevel err -> Error (err, genericErrorMessage)
-        | Success ->
-            //if NOT EXIST dont.run.peverify (
-            //    "%PEVERIFY%" test.exe
-            //    @if ERRORLEVEL 1 goto Error
-            //)
-            match doPeverify "test.exe" with OK | Skipped _ -> OK | Error x -> Error x
+        do! fsc (sprintf "%s --define:BASIC_TEST -o:test.exe -g" fsc_flags) sources 
 
-    let doBasic64 () =
+        //if NOT EXIST dont.run.peverify (
+        //    "%PEVERIFY%" test.exe
+        //    @if ERRORLEVEL 1 goto Error
+        //)
+        do! doPeverify "test.exe"
+        }
+
+    let doBasic64 () = processor {
         // "%FSC%" %fsc_flags% --define:BASIC_TEST --platform:x64 -o:testX64.exe -g %sources%
         // if ERRORLEVEL 1 goto Error
-        match fsc (sprintf "%s --define:BASIC_TEST --platform:x64 -o:testX64.exe -g" fsc_flags) sources with
-        | ErrorLevel err -> Error (err, genericErrorMessage)
-        | Success ->
-            // if NOT EXIST dont.run.peverify (
-            //     "%PEVERIFY%" testX64.exe
-            //     @if ERRORLEVEL 1 goto Error
-            // )
-            match doPeverify "testX64.exe" with OK | Skipped _ -> OK | Error x -> Error x
+        do! fsc (sprintf "%s --define:BASIC_TEST --platform:x64 -o:testX64.exe -g" fsc_flags) sources
 
-    let doFscHW () =
+        // if NOT EXIST dont.run.peverify (
+        //     "%PEVERIFY%" testX64.exe
+        //     @if ERRORLEVEL 1 goto Error
+        // )
+        do! doPeverify "testX64.exe"
+        }
+
+    let doFscHW () = processor {
         // if exist test-hw.* (
-        if Directory.EnumerateFiles(testDir, "test-hw.*") |> Seq.tryPick fileExists |> Option.isSome then (
+        if Directory.EnumerateFiles(testDir, "test-hw.*") |> Seq.tryPick fileExists |> Option.isSome then
             // "%FSC%" %fsc_flags% -o:test-hw.exe -g %sourceshw%
             // if ERRORLEVEL 1 goto Error
-            match fsc (sprintf "%s -o:test-hw.exe -g" fsc_flags) sourceshw with
-            | ErrorLevel err -> Error (err, genericErrorMessage)
-            | Success ->
-                // if NOT EXIST dont.run.peverify (
-                //   "%PEVERIFY%" test-hw.exe
-                //   @if ERRORLEVEL 1 goto Error
-                // )
-                match doPeverify "test-hw.exe" with OK | Skipped _ -> OK | Error x -> Error x
-        //)
-        ) else Skipped "not found test-hw.*"
+            do! fsc (sprintf "%s -o:test-hw.exe -g" fsc_flags) sourceshw
 
-    let doFscO3 () =
+            // if NOT EXIST dont.run.peverify (
+            //   "%PEVERIFY%" test-hw.exe
+            //   @if ERRORLEVEL 1 goto Error
+            // )
+            do! doPeverify "test-hw.exe" 
+        //)
+        }
+
+    let doFscO3 () = processor {
         //"%FSC%" %fsc_flags% --optimize --define:PERF -o:test--optimize.exe -g %sources%
         //if ERRORLEVEL 1 goto Error
-        match fsc (sprintf "%s --optimize --define:PERF -o:test--optimize.exe -g" fsc_flags) sources with
-        | ErrorLevel err -> Error (err, genericErrorMessage)
-        | Success ->
-            //if NOT EXIST dont.run.peverify (
-            //    "%PEVERIFY%" test--optimize.exe
-            //    @if ERRORLEVEL 1 goto Error
-            //)
-            match doPeverify "test--optimize.exe" with OK | Skipped _ -> OK | Error x -> Error x
+        do! fsc (sprintf "%s --optimize --define:PERF -o:test--optimize.exe -g" fsc_flags) sources 
+        //if NOT EXIST dont.run.peverify (
+        //    "%PEVERIFY%" test--optimize.exe
+        //    @if ERRORLEVEL 1 goto Error
+        //)
+        do! doPeverify "test--optimize.exe"
+        }
 
-    let doGeneratedSignature () =
+    let doGeneratedSignature () = processor {
         //if NOT EXIST dont.use.generated.signature (
-        match testDir/"dont.use.generated.signature" |> fileExists with
-        | Some _ -> Skipped "dont.use.generated.signature found"
-        | None ->
+        if testDir/"dont.use.generated.signature" |> fileExists |> Option.isNone then
             // if exist test.ml (
-            match testDir/"test.ml" |> fileExists with
-            | None -> Skipped "not found test.ml"
-            | Some _ ->
+            if testDir/"test.ml" |> fileExists |> Option.isSome then
                 //  echo Generating interface file...
                 log "Generating interface file..."
                 //  copy /y %source1% tmptest.ml
@@ -226,33 +217,28 @@ let singleTestBuild cfg testDir =
                 //  REM NOTE: use --generate-interface-file since results may be in Unicode
                 //  "%FSC%" %fsc_flags% --sig:tmptest.mli tmptest.ml
                 //  if ERRORLEVEL 1 goto Error
-                match fsc (sprintf "%s --sig:tmptest.mli" fsc_flags) ["tmptest.ml"] with
-                | ErrorLevel err -> Error (err, genericErrorMessage)
-                | Success ->
-                    //  echo Compiling against generated interface file...
-                    log "Compiling against generated interface file..."
-                    //  "%FSC%" %fsc_flags% -o:tmptest1.exe tmptest.mli tmptest.ml
-                    //  if ERRORLEVEL 1 goto Error
-                    match fsc (sprintf "%s -o:tmptest1.exe" fsc_flags) ["tmptest.mli";"tmptest.ml"] with
-                    | ErrorLevel err -> Error (err, genericErrorMessage)
-                    | Success ->
-                        //  if NOT EXIST dont.run.peverify (
-                        //    "%PEVERIFY%" tmptest1.exe
-                        //    @if ERRORLEVEL 1 goto Error
-                        //  )
-                        match doPeverify "tmptest1.exe" with OK | Skipped _ -> OK | Error x -> Error x
+                do! fsc (sprintf "%s --sig:tmptest.mli" fsc_flags) ["tmptest.ml"]
+
+                //  echo Compiling against generated interface file...
+                log "Compiling against generated interface file..."
+                //  "%FSC%" %fsc_flags% -o:tmptest1.exe tmptest.mli tmptest.ml
+                //  if ERRORLEVEL 1 goto Error
+                do! fsc (sprintf "%s -o:tmptest1.exe" fsc_flags) ["tmptest.mli";"tmptest.ml"]
+
+                //  if NOT EXIST dont.run.peverify (
+                //    "%PEVERIFY%" tmptest1.exe
+                //    @if ERRORLEVEL 1 goto Error
+                //  )
+                do! doPeverify "tmptest1.exe"
             // )
         //)
+        }
 
-    let doEmptySignature () =
+    let doEmptySignature () = processor {
         //if NOT EXIST dont.use.empty.signature (
-        match testDir/"dont.use.empty.signature" |> fileExists with
-        | Some _ -> Skipped "dont.use.empty.signature found"
-        | None ->
+        if testDir/"dont.use.empty.signature" |> fileExists |> Option.isNone then
             // if exist test.ml ( 
-            match testDir/"test.ml" |> fileExists with
-            | None -> Skipped "not found test.ml"
-            | Some _ ->
+            if testDir/"test.ml" |> fileExists |> Option.isSome then
                 // echo Compiling against empty interface file...
                 log "Compiling against empty interface file..."
                 // echo // empty file  > tmptest2.mli
@@ -261,27 +247,23 @@ let singleTestBuild cfg testDir =
                 source1 |> Option.iter (fun from -> copy_y from "tmptest2.ml")
                 // "%FSC%" %fsc_flags% --define:COMPILING_WITH_EMPTY_SIGNATURE -o:tmptest2.exe tmptest2.mli tmptest2.ml
                 // if ERRORLEVEL 1 goto Error
-                match fsc (sprintf "%s --define:COMPILING_WITH_EMPTY_SIGNATURE -o:tmptest2.exe" fsc_flags) ["tmptest2.mli";"tmptest2.ml"] with
-                | ErrorLevel err -> Error (err, genericErrorMessage)
-                | Success ->
-                    // if NOT EXIST dont.run.peverify (
-                    //     "%PEVERIFY%" tmptest2.exe
-                    //     @if ERRORLEVEL 1 goto Error
-                    // )
-                    match doPeverify "tmptest2.exe" with OK | Skipped _ -> OK | Error x -> Error x
+                do! fsc (sprintf "%s --define:COMPILING_WITH_EMPTY_SIGNATURE -o:tmptest2.exe" fsc_flags) ["tmptest2.mli";"tmptest2.ml"]
+
+                // if NOT EXIST dont.run.peverify (
+                //     "%PEVERIFY%" tmptest2.exe
+                //     @if ERRORLEVEL 1 goto Error
+                // )
+                do! doPeverify "tmptest2.exe"
             // )
         // )
+        }
 
 
-    let doEmptySignatureOpt () =
+    let doEmptySignatureOpt () = processor {
         //if NOT EXIST dont.use.empty.signature (
-        match testDir/"dont.use.empty.signature" |> fileExists with
-        | Some _ -> Skipped "dont.use.empty.signature found"
-        | None ->
+        if testDir/"dont.use.empty.signature" |> fileExists |> Option.isNone then
             // if exist test.ml ( 
-            match testDir/"test.ml" |> fileExists with
-            | None -> Skipped "not found test.ml"
-            | Some _ ->
+            if testDir/"test.ml" |> fileExists |> Option.isSome then
                 // echo Compiling against empty interface file...
                 log "Compiling against empty interface file..."
                 // echo // empty file  > tmptest2.mli
@@ -290,83 +272,75 @@ let singleTestBuild cfg testDir =
                 source1 |> Option.iter (fun from -> copy_y from "tmptest2.ml")
                 // "%FSC%" %fsc_flags% --define:COMPILING_WITH_EMPTY_SIGNATURE --optimize -o:tmptest2--optimize.exe tmptest2.mli tmptest2.ml
                 // if ERRORLEVEL 1 goto Error
-                match fsc (sprintf "%s --define:COMPILING_WITH_EMPTY_SIGNATURE --optimize -o:tmptest2--optimize.exe" fsc_flags) ["tmptest2.mli";"tmptest2.ml"] with
-                | ErrorLevel err -> Error (err, genericErrorMessage)
-                | Success ->
-                    // if NOT EXIST dont.run.peverify (
-                    //     "%PEVERIFY%" tmptest2--optimize.exe
-                    //     @if ERRORLEVEL 1 goto Error
-                    // )
-                    match doPeverify "tmptest2--optimize.exe" with OK | Skipped _ -> OK | Error x -> Error x
+                do! fsc (sprintf "%s --define:COMPILING_WITH_EMPTY_SIGNATURE --optimize -o:tmptest2--optimize.exe" fsc_flags) ["tmptest2.mli";"tmptest2.ml"]
+
+                // if NOT EXIST dont.run.peverify (
+                //     "%PEVERIFY%" tmptest2--optimize.exe
+                //     @if ERRORLEVEL 1 goto Error
+                // )
+                do! doPeverify "tmptest2--optimize.exe"
             // )
         // )
+        }
 
-    let doOptFscMinusDebug () =
+    let doOptFscMinusDebug () = processor {
         // "%FSC%" %fsc_flags% --optimize- --debug -o:test--optminus--debug.exe -g %sources%
         // if ERRORLEVEL 1 goto Error
-        match fsc (sprintf "%s --optimize- --debug -o:test--optminus--debug.exe -g" fsc_flags) sources with
-        | ErrorLevel err -> Error (err, genericErrorMessage)
-        | Success ->
-            // if NOT EXIST dont.run.peverify (
-            //     "%PEVERIFY%" test--optminus--debug.exe
-            //     @if ERRORLEVEL 1 goto Error
-            // )
-            match doPeverify "test--optminus--debug.exe" with OK | Skipped _ -> OK | Error x -> Error x
+        do! fsc (sprintf "%s --optimize- --debug -o:test--optminus--debug.exe -g" fsc_flags) sources
 
-    let doOptFscPlusDebug () =
+        // if NOT EXIST dont.run.peverify (
+        //     "%PEVERIFY%" test--optminus--debug.exe
+        //     @if ERRORLEVEL 1 goto Error
+        // )
+        do! doPeverify "test--optminus--debug.exe"
+        }
+
+    let doOptFscPlusDebug () = processor {
         // "%FSC%" %fsc_flags% --optimize+ --debug -o:test--optplus--debug.exe -g %sources%
         // if ERRORLEVEL 1 goto Error
-        match fsc (sprintf "%s --optimize+ --debug -o:test--optplus--debug.exe -g" fsc_flags) sources with
-        | ErrorLevel err -> Error (err, genericErrorMessage)
-        | Success ->
-            // if NOT EXIST dont.run.peverify (
-            //     "%PEVERIFY%" test--optplus--debug.exe
-            //     @if ERRORLEVEL 1 goto Error
-            // )
-            match doPeverify "test--optplus--debug.exe" with OK | Skipped _ -> OK | Error x -> Error x
+        do! fsc (sprintf "%s --optimize+ --debug -o:test--optplus--debug.exe -g" fsc_flags) sources
 
-    let doAsDLL () =
+        // if NOT EXIST dont.run.peverify (
+        //     "%PEVERIFY%" test--optplus--debug.exe
+        //     @if ERRORLEVEL 1 goto Error
+        // )
+        do! doPeverify "test--optplus--debug.exe"
+        }
+
+    let doAsDLL () = processor {
         //REM Compile as a DLL to exercise pickling of interface data, then recompile the original source file referencing this DLL
         //REM THe second compilation will not utilize the information from the first in any meaningful way, but the
         //REM compiler will unpickle the interface and optimization data, so we test unpickling as well.
 
         //if NOT EXIST dont.compile.test.as.dll (
-        match testDir/"dont.compile.test.as.dll" |> fileExists with
-        | Some _ -> Skipped "dont.compile.test.as.dll found"
-        | None ->
+        if testDir/"dont.compile.test.as.dll" |> fileExists |> Option.isNone then
             // "%FSC%" %fsc_flags% --optimize -a -o:test--optimize-lib.dll -g %sources%
             // if ERRORLEVEL 1 goto Error
-            match fsc (sprintf "%s --optimize -a -o:test--optimize-lib.dll -g" fsc_flags) sources with
-            | ErrorLevel err -> Error (err, genericErrorMessage)
-            | Success ->
-                // "%FSC%" %fsc_flags% --optimize -r:test--optimize-lib.dll -o:test--optimize-client-of-lib.exe -g %sources%
-                // if ERRORLEVEL 1 goto Error
-                match fsc (sprintf "%s --optimize -r:test--optimize-lib.dll -o:test--optimize-client-of-lib.exe -g" fsc_flags) sources with
-                | ErrorLevel err -> Error (err, genericErrorMessage)
-                | Success ->
-                    // if NOT EXIST dont.run.peverify (
-                    //     "%PEVERIFY%" test--optimize-lib.dll
-                    //     @if ERRORLEVEL 1 goto Error
-                    // )
-                    match doPeverify "test--optimize-lib.dll" with 
-                    | Error x -> Error x
-                    | OK | Skipped _ ->
-                        // if NOT EXIST dont.run.peverify (
-                        //     "%PEVERIFY%" test--optimize-client-of-lib.exe
-                        // )
-                        // @if ERRORLEVEL 1 goto Error
-                        match doPeverify "test--optimize-client-of-lib.exe" with OK | Skipped _ -> OK | Error x -> Error x
-        //)
+            do! fsc (sprintf "%s --optimize -a -o:test--optimize-lib.dll -g" fsc_flags) sources
 
-    let doWrapperNamespace () =
+            // "%FSC%" %fsc_flags% --optimize -r:test--optimize-lib.dll -o:test--optimize-client-of-lib.exe -g %sources%
+            // if ERRORLEVEL 1 goto Error
+            do! fsc (sprintf "%s --optimize -r:test--optimize-lib.dll -o:test--optimize-client-of-lib.exe -g" fsc_flags) sources
+
+            // if NOT EXIST dont.run.peverify (
+            //     "%PEVERIFY%" test--optimize-lib.dll
+            //     @if ERRORLEVEL 1 goto Error
+            // )
+            do! doPeverify "test--optimize-lib.dll"
+
+            // if NOT EXIST dont.run.peverify (
+            //     "%PEVERIFY%" test--optimize-client-of-lib.exe
+            // )
+            // @if ERRORLEVEL 1 goto Error
+            do! doPeverify "test--optimize-client-of-lib.exe"
+        //)
+        }
+
+    let doWrapperNamespace () = processor {
         // if NOT EXIST dont.use.wrapper.namespace (
-        match testDir/"dont.use.wrapper.namespace" |> fileExists with
-        | Some _ -> Skipped "dont.use.wrapper.namespace found"
-        | None ->
+        if testDir/"dont.use.wrapper.namespace" |> fileExists |> Option.isNone then
             // if exist test.ml (
-            match testDir/"test.ml" |> fileExists with
-            | None -> Skipped "not found test.ml"
-            | Some _ -> 
+            if testDir/"test.ml" |> fileExists |> Option.isSome then
                 // echo Compiling when wrapped in a namespace declaration...
                 log "Compiling when wrapped in a namespace declaration..."
                 // echo module TestNamespace.TestModule > tmptest3.ml
@@ -375,26 +349,22 @@ let singleTestBuild cfg testDir =
                 source1 |> Option.iter (fun from -> type_append_tofile from "tmptest3.ml")
                 // "%FSC%" %fsc_flags% -o:tmptest3.exe tmptest3.ml
                 // if ERRORLEVEL 1 goto Error
-                match fsc (sprintf "%s -o:tmptest3.exe" fsc_flags) ["tmptest3.ml"] with
-                | ErrorLevel err -> Error (err, genericErrorMessage)
-                | Success ->
-                    // if NOT EXIST dont.run.peverify (
-                    //     "%PEVERIFY%" tmptest3.exe
-                    //     @if ERRORLEVEL 1 goto Error
-                    // )
-                    match doPeverify "tmptest3.exe" with OK | Skipped _ -> OK | Error x -> Error x
+                do! fsc (sprintf "%s -o:tmptest3.exe" fsc_flags) ["tmptest3.ml"]
+
+                // if NOT EXIST dont.run.peverify (
+                //     "%PEVERIFY%" tmptest3.exe
+                //     @if ERRORLEVEL 1 goto Error
+                // )
+                do! doPeverify "tmptest3.exe"
             // )
         //)
+        }
 
-    let doWrapperNamespaceOpt () =
+    let doWrapperNamespaceOpt () = processor {
         //if NOT EXIST dont.use.wrapper.namespace (
-        match testDir/"dont.use.wrapper.namespace" |> fileExists with
-        | Some _ -> Skipped "dont.use.wrapper.namespace found"
-        | None ->
+        if testDir/"dont.use.wrapper.namespace" |> fileExists |> Option.isNone then
             // if exist test.ml (
-            match testDir/"test.ml" |> fileExists with
-            | None -> Skipped "not found test.ml"
-            | Some _ ->
+            if testDir/"test.ml" |> fileExists |> Option.isSome then
                 // echo Compiling when wrapped in a namespace declaration...
                 log "Compiling when wrapped in a namespace declaration..."
                 // echo module TestNamespace.TestModule > tmptest3.ml
@@ -403,16 +373,16 @@ let singleTestBuild cfg testDir =
                 source1 |> Option.iter (fun from -> type_append_tofile from "tmptest3.ml")
                 // "%FSC%" %fsc_flags% --optimize -o:tmptest3--optimize.exe tmptest3.ml
                 // if ERRORLEVEL 1 goto Error
-                match fsc (sprintf "%s --optimize -o:tmptest3--optimize.exe" fsc_flags) ["tmptest3.ml"] with
-                | ErrorLevel err -> Error (err, genericErrorMessage)
-                | Success ->
-                    // if NOT EXIST dont.run.peverify (
-                    //     "%PEVERIFY%" tmptest3--optimize.exe
-                    //     @if ERRORLEVEL 1 goto Error
-                    // )
-                    match doPeverify "tmptest3--optimize.exe" with OK | Skipped _ -> OK | Error x -> Error x
+                do! fsc (sprintf "%s --optimize -o:tmptest3--optimize.exe" fsc_flags) ["tmptest3.ml"]
+
+                // if NOT EXIST dont.run.peverify (
+                //     "%PEVERIFY%" tmptest3--optimize.exe
+                //     @if ERRORLEVEL 1 goto Error
+                // )
+                do! doPeverify "tmptest3--optimize.exe"
             // )
         // )
+        }
 
     let build = function
         | FSI_FILE -> doNOOP
@@ -434,9 +404,12 @@ let singleTestBuild cfg testDir =
         | WRAPPER_NAMESPACE -> doWrapperNamespace
         | WRAPPER_NAMESPACE_OPT -> doWrapperNamespaceOpt
 
-    let checkBuild = function
-        | OK -> doneOk ()
-        | Skipped _ -> doneOk ()
-        | Error (err,msg) -> doneError err msg
-
-    (fun p -> build p () |> checkBuild)
+    let flow p =
+        build p () 
+        |> Attempt.Run 
+        |> function 
+            | Success () -> doneOk () 
+            | Failure (Skipped _) -> doneSkipped ()
+            | Failure (Error (err,msg)) -> doneError err msg
+    
+    flow

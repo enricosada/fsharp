@@ -7,41 +7,7 @@ open System.Collections.Generic
 open PlatformHelpers
 open Microsoft.Win32
 
-type RunResult = OK | Error of (int * string) | Skipped of string
-
-//type Result<'T> =
-//    | Success of 'T
-//    | Failure of Error
-//and Error = { Message: string }
-//
-//type Attempt<'T> = (unit -> Result<'T>)
-//
-//let succeed x = (fun () -> Success (x)) : Attempt<'T>
-//let fail err = (fun () -> Failure(err)) : Attempt<'T>
-//let runAttempt (a: Attempt<'T>) = a ()
-//
-//let bind (f: Attempt<'T>) (rest: 'T -> Attempt<'U>) : Attempt<'U> =
-//    match runAttempt f with
-//    | Failure (msg) -> fail msg
-//    | Success (res) as v -> rest res
-//
-//let getValue (res: Result<'T>) = 
-//    match res with
-//    | Success v -> v
-//    | Failure err -> failwith err.Message 
-//
-//type ProcessBuilder () =
-//    member b.Return(x) = succeed x
-//    member b.ReturnFrom(x) = x
-//    member b.Bind(p, rest) = bind p rest
-//    member b.Let(p, rest) : Attempt<'T> = rest p
-//
-//type Processor () =
-//    static member Run workflow =
-//        runAttempt workflow
-//
-//let processor = Processor()
-
+type RunError = Error of (int * string) | Skipped of string
 
 type TestConfig = {
     EnvironmentVariables: Map<string,string>
@@ -72,6 +38,11 @@ type TestConfig = {
     RESGEN: string;
 }
 and INSTALL_SKU = Clean | DesktopExpress | WebExpress | Ultimate
+
+let checkResult = 
+    function 
+    | CmdResult.ErrorLevel err -> let x = err, (sprintf "ERRORLEVEL %d" err) in Failure (RunError.Error x)
+    | CmdResult.Success -> Success ()
 
 let GetSdk81Path sdkIdent =
     let regPath = Path.Combine(@"SOFTWARE\Microsoft\Microsoft SDKs\Windows\v8.1A\", sdkIdent)

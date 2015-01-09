@@ -35,7 +35,7 @@ let type_append_tofile workDir source p =
     File.AppendAllText(from, contents)
 
 // %GACUTIL% /if %BINDIR%\FSharp.Core.dll
-let gacutil exec exeName flags assembly =
+let gacutil exec exeName flags assembly : CmdResult =
     exec exeName (sprintf """%s "%s" """ flags assembly)
 
 // "%NGEN32%" install "%BINDIR%\fsc.exe" /queue:1
@@ -112,4 +112,4 @@ let where envVars cmd =
     
     match exec' cmdArgs (Path.GetTempPath()) envVars "cmd.exe" (sprintf "/c where %s" cmd) with
     | ErrorLevel _ -> None
-    | Success -> !result    
+    | CmdResult.Success -> !result    

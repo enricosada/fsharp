@@ -6,7 +6,7 @@ open TestConfig
 open NUnit.Framework
 open PlatformHelpers
 
-let withFileGuard path f =
+let withFileGuard path (f: Attempt<_,_>) = processor {
     //  if exist test.ok (del /f /q test.ok)
     path |> fileExists |> Option.iter File.Delete
     //  %CLIX% "%FSI%" %fsi_flags% < %sources% && (
@@ -14,12 +14,12 @@ let withFileGuard path f =
     //  @echo FSI_STDIN failed;
     //  set ERRORMSG=%ERRORMSG% FSI_STDIN failed;
     //  )
-    match f () with
-    | ErrorLevel err -> Error (err, sprintf "exit code %i" err)
-    | Success ->
-        match path |> fileExists with
-        | Some _ -> OK
-        | None -> Error (0, sprintf "exit code 0 but %s file doesn't exists" (Path.GetFileName(path)))
+    do! f ()
+
+    if path |> fileExists |> Option.isNone then
+        let msg = sprintf "exit code 0 but %s file doesn't exists" (Path.GetFileName(path))
+        return! (fun () -> Failure (Error (0, msg)))
+    }
 
 let singleTestRun' cfg testDir =
 
@@ -98,16 +98,15 @@ let singleTestRun' cfg testDir =
     // REM THE TESTS
     // REM =========================================
 
-    let loglines = log "%s"
     let exec exe args = 
         log "%s %s" exe args
-        exec' { RedirectOutput = Some loglines; RedirectError = Some loglines; RedirectInput = None; } testDir cfg.EnvironmentVariables exe args
+        exec' { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } testDir cfg.EnvironmentVariables exe args
 
     let execIn input exe args = 
-        exec' { RedirectOutput = Some loglines; RedirectError = Some loglines; RedirectInput = Some input; } testDir cfg.EnvironmentVariables exe args
+        exec' { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = Some input; } testDir cfg.EnvironmentVariables exe args
 
-    let clix exe args = exec (testDir/exe) args
-    let fsi = Commands.fsi exec cfg.FSI
+    let clix exe = exec (testDir/exe) >> checkResult
+    let fsi args = Commands.fsi exec cfg.FSI args >> checkResult
     let fsiIn flags sources =
         log "%s %s < %s" cfg.FSI flags (sources |> Seq.ofList |> String.concat " ")
         let inputs = sources |> List.map fullpath
@@ -120,6 +119,7 @@ let singleTestRun' cfg testDir =
                ErrorLevel -1
            | None ->
                Commands.fsiIn execIn cfg.FSI flags inputs
+        |> checkResult
 
     let fsi_flags = cfg.fsi_flags
 
@@ -127,10 +127,9 @@ let singleTestRun' cfg testDir =
 
     // :FSI_STDIN
     // @echo do :FSI_STDIN
-    let runFSI_STDIN () =
+    let runFSI_STDIN () = processor {
         // if NOT EXIST dont.pipe.to.stdin (
-        match fileExists "dont.pipe.to.stdin" with
-        | None -> 
+        if fileExists "dont.pipe.to.stdin" |> Option.isNone then
             // if exist test.ok (del /f /q test.ok)
             // %CLIX% "%FSI%" %fsi_flags% < %sources% && (
             let run () = fsiIn fsi_flags sources
@@ -138,16 +137,15 @@ let singleTestRun' cfg testDir =
             // @echo FSI_STDIN failed;
             // set ERRORMSG=%ERRORMSG% FSI_STDIN failed;
             // )
-            run |> withTestOkFile
+            do! run |> withTestOkFile
         // )
-        | Some _ -> Skipped "dont.pipe.to.stdin found"
+        }
 
     // :FSI_STDIN_OPT
     // @echo do :FSI_STDIN_OPT
-    let runFSI_STDIN_OPT () =
+    let runFSI_STDIN_OPT () = processor {
         // if NOT EXIST dont.pipe.to.stdin (
-        match fileExists "dont.pipe.to.stdin" with
-        | None -> 
+        if fileExists "dont.pipe.to.stdin" |> Option.isNone then
             // if exist test.ok (del /f /q test.ok)
             // %CLIX% "%FSI%" %fsi_flags% --optimize < %sources% && (
             let run () = fsiIn (sprintf "%s --optimize" fsi_flags) sources
@@ -155,16 +153,15 @@ let singleTestRun' cfg testDir =
             // @echo FSI_STDIN_OPT failed
             // set ERRORMSG=%ERRORMSG% FSI_STDIN_OPT failed;
             // )
-            run |> withTestOkFile
+            do! run |> withTestOkFile
         // )
-        | Some _ -> Skipped "dont.pipe.to.stdin found"
+        }
 
     // :FSI_STDIN_GUI
     // @echo do :FSI_STDIN_GUI
-    let runFSI_STDIN_GUI () =
+    let runFSI_STDIN_GUI () = processor {
         // if NOT EXIST dont.pipe.to.stdin (
-        match fileExists "dont.pipe.to.stdin" with
-        | None ->
+        if fileExists "dont.pipe.to.stdin" |> Option.isNone then
             // if exist test.ok (del /f /q test.ok)
             // %CLIX% "%FSI%" %fsi_flags% --gui < %sources% && (
             let run () = fsiIn (sprintf "%s --gui" fsi_flags) sources
@@ -172,16 +169,15 @@ let singleTestRun' cfg testDir =
             // @echo FSI_STDIN_GUI failed;
             // set ERRORMSG=%ERRORMSG% FSI_STDIN_GUI failed;
             // )
-            run |> withTestOkFile
+            do! run |> withTestOkFile
         // )
-        | Some _ -> Skipped "dont.pipe.to.stdin found"
+        }
 
     // :FSI_FILE
     // @echo do :FSI_FILE
-    let runFSI_FILE () =
+    let runFSI_FILE () = processor {
         // if NOT EXIST dont.run.as.script (
-        match fileExists "dont.run.as.script" with
-        | None -> 
+        if fileExists "dont.run.as.script" |> Option.isNone then
             // if exist test.ok (del /f /q test.ok)
             // %CLIX% "%FSI%" %fsi_flags% %sources% && (
             let run () = fsi fsi_flags sources
@@ -189,13 +185,13 @@ let singleTestRun' cfg testDir =
             // @echo FSI_FILE failed
             // set ERRORMSG=%ERRORMSG% FSI_FILE failed;
             // )
-            run |> withTestOkFile
+            do! run |> withTestOkFile
         // )
-        | Some _ -> Skipped "dont.run.as.script found"
+        }
 
     // :FSC_BASIC
     // @echo do :FSC_BASIC
-    let runFSC_BASIC () =
+    let runFSC_BASIC () = processor {
         // if exist test.ok (del /f /q test.ok)
         // %CLIX% .\test.exe && (
         let run () = clix "test.exe" ""
@@ -203,11 +199,12 @@ let singleTestRun' cfg testDir =
         // @echo :FSC_BASIC failed
         // set ERRORMSG=%ERRORMSG% FSC_BASIC failed;
         // )
-        run |> withTestOkFile
+        do! run |> withTestOkFile
+        }
 
     // :FSC_BASIC_64
     // @echo do :FSC_BASIC_64
-    let runFSC_BASIC_64 () =
+    let runFSC_BASIC_64 () = processor {
         // if exist test.ok (del /f /q test.ok)
         // %CLIX% .\testX64.exe && (
         let run () = clix "testX64.exe" ""
@@ -215,13 +212,14 @@ let singleTestRun' cfg testDir =
         // @echo :FSC_BASIC_64 failed
         // set ERRORMSG=%ERRORMSG% FSC_BASIC_64 failed;
         // )
-        run |> withTestOkFile
+        do! run |> withTestOkFile
+        }
 
     // :FSC_HW
     // @echo do :FSC_HW
-    let runFSC_HW () =
+    let runFSC_HW () = processor {
         // if exist test-hw.* (
-        if Directory.EnumerateFiles(testDir, "test-hw.*") |> Seq.tryPick fileExists |> Option.isSome then (
+        if Directory.EnumerateFiles(testDir, "test-hw.*") |> Seq.tryPick fileExists |> Option.isSome then
             // if exist test.ok (del /f /q test.ok)
             // %CLIX% .\test-hw.exe && (
             let run () = clix "test-hw.exe" ""
@@ -229,14 +227,13 @@ let singleTestRun' cfg testDir =
             // @echo  :FSC_HW failed
             // set ERRORMSG=%ERRORMSG% FSC_HW failed;
             // )
-            run |> withTestOkFile
+            do! run |> withTestOkFile
         //)
-        )
-        else Skipped "not found test-hw.*"
+        }
 
     // :FSC_O3
     // @echo do :FSC_O3
-    let runFSC_O3 () =
+    let runFSC_O3 () = processor {
         // if exist test.ok (del /f /q test.ok)
         // %CLIX% .\test--optimize.exe && (
         let run () = clix "test--optimize.exe" ""
@@ -244,11 +241,12 @@ let singleTestRun' cfg testDir =
         // @echo :FSC_O3 failed
         // set ERRORMSG=%ERRORMSG% FSC_03 failed;
         // )
-        run |> withTestOkFile
+        do! run |> withTestOkFile
+        }
 
     // :FSC_OPT_MINUS_DEBUG
     // @echo do :FSC_OPT_MINUS_DEBUG
-    let runFSC_OPT_MINUS_DEBUG () =
+    let runFSC_OPT_MINUS_DEBUG () = processor {
         // if exist test.ok (del /f /q test.ok)
         // %CLIX% .\test--optminus--debug.exe && (
         let run () = clix "test--optminus--debug.exe" ""
@@ -256,11 +254,12 @@ let singleTestRun' cfg testDir =
         // @echo :FSC_OPT_MINUS_DEBUG failed
         // set ERRORMSG=%ERRORMSG% FSC_OPT_MINUS_DEBUG failed;
         // )
-        run |> withTestOkFile
+        do! run |> withTestOkFile
+        }
 
     // :FSC_OPT_PLUS_DEBUG
     // @echo do :FSC_OPT_PLUS_DEBUG
-    let runFSC_OPT_PLUS_DEBUG () =
+    let runFSC_OPT_PLUS_DEBUG () = processor {
         // if exist test.ok (del /f /q test.ok)
         // %CLIX% .\test--optplus--debug.exe && (
         let run () = clix "test--optplus--debug.exe" ""
@@ -268,17 +267,16 @@ let singleTestRun' cfg testDir =
         // @echo :FSC_OPT_PLUS_DEBUG failed
         // set ERRORMSG=%ERRORMSG% FSC_OPT_PLUS_DEBUG failed;
         // )
-        run |> withTestOkFile
+        do! run |> withTestOkFile
+        }
 
     // :GENERATED_SIGNATURE
     // @echo do :GENERATED_SIGNATURE
-    let runGENERATED_SIGNATURE () =
+    let runGENERATED_SIGNATURE () = processor {
         // if NOT EXIST dont.use.generated.signature (
-        match "dont.use.generated.signature" |> fileExists with
-        | None -> 
+        if "dont.use.generated.signature" |> fileExists |> Option.isNone then
             // if exist test.ml (
-            match "test.ml" |> fileExists with
-            | Some  _ ->
+            if "test.ml" |> fileExists |> Option.isSome then
                 // if exist test.ok (del /f /q test.ok)
                 // %CLIX% tmptest1.exe && (
                 let run () = clix "tmptest1.exe" ""
@@ -286,21 +284,18 @@ let singleTestRun' cfg testDir =
                 // @echo :GENERATED_SIGNATURE failed
                 // set ERRORMSG=%ERRORMSG% FSC_GENERATED_SIGNATURE failed;
                 // )
-                run |> withTestOkFile
+                do! run |> withTestOkFile
             // )
-            | None -> Skipped "not found test.ml"
         //)
-        | Some _ -> Skipped "dont.use.generated.signature found"
+        }
 
     // :EMPTY_SIGNATURE
     // @echo do :EMPTY_SIGNATURE
-    let runEMPTY_SIGNATURE () =
+    let runEMPTY_SIGNATURE () = processor {
         // if NOT EXIST dont.use.empty.signature (
-        match "dont.use.empty.signature" |> fileExists with
-        | None -> 
+        if "dont.use.empty.signature" |> fileExists |> Option.isNone then
             // if exist test.ml (
-            match "test.ml" |> fileExists with
-            | Some  _ ->
+            if "test.ml" |> fileExists |> Option.isSome then
                 // if exist test.ok (del /f /q test.ok)
                 // %CLIX% tmptest2.exe && (
                 let run () = clix "tmptest2.exe" ""
@@ -308,21 +303,18 @@ let singleTestRun' cfg testDir =
                 // @echo :EMPTY_SIGNATURE failed
                 // set ERRORMSG=%ERRORMSG% FSC_EMPTY_SIGNATURE failed;
                 // )
-                run |> withTestOkFile
+                do! run |> withTestOkFile
             // )
-            | None -> Skipped "test.ml not found"
         //)
-        | Some _ -> Skipped "dont.use.empty.signature found"
+        }
 
     // :EMPTY_SIGNATURE_OPT
     // @echo do :EMPTY_SIGNATURE_OPT
-    let runEMPTY_SIGNATURE_OPT () =
+    let runEMPTY_SIGNATURE_OPT () = processor {
         // if NOT EXIST dont.use.empty.signature (
-        match "dont.use.empty.signature" |> fileExists with
-        | None -> 
+        if "dont.use.empty.signature" |> fileExists |> Option.isNone then
             // if exist test.ml (
-            match "test.ml" |> fileExists with
-            | Some  _ ->
+            if "test.ml" |> fileExists |> Option.isSome then
                 // if exist test.ok (del /f /q test.ok)
                 // %CLIX% tmptest2--optimize.exe && (
                 let run () = clix "tmptest2--optimize.exe" ""
@@ -330,15 +322,14 @@ let singleTestRun' cfg testDir =
                 // @echo :EMPTY_SIGNATURE_OPT --optimize failed
                 // set ERRORMSG=%ERRORMSG% EMPTY_SIGNATURE_OPT --optimize failed;
                 // )
-                run |> withTestOkFile
+                do! run |> withTestOkFile
             // )
-            | None -> Skipped "test.ml not found"
         //)
-        | Some _ -> Skipped "dont.use.empty.signature found"
+        }
 
     // :FRENCH
     // @echo do :FRENCH
-    let runFRENCH () =
+    let runFRENCH () = processor {
         // if exist test.ok (del /f /q test.ok)
         // %CLIX% .\test.exe fr-FR && (
         let run () = clix "test.exe" "fr-FR"
@@ -346,11 +337,12 @@ let singleTestRun' cfg testDir =
         // @echo :FRENCH failed
         // set ERRORMSG=%ERRORMSG% FRENCH failed;
         // )
-        run |> withTestOkFile
+        do! run |> withTestOkFile
+        }
 
     // :SPANISH
     // @echo do :SPANISH
-    let runSPANISH () =
+    let runSPANISH () = processor {
         // if exist test.ok (del /f /q test.ok)
         // %CLIX% .\test.exe es-ES && (
         let run () = clix "test.exe" "es-ES"
@@ -358,14 +350,14 @@ let singleTestRun' cfg testDir =
         // @echo :SPANISH failed
         // set ERRORMSG=%ERRORMSG% SPANISH failed;
         // )
-        run |> withTestOkFile
+        do! run |> withTestOkFile
+        }
 
     // :AS_DLL
     // @echo do :AS_DLL
-    let runAS_DLL () =
+    let runAS_DLL () = processor {
         //if NOT EXIST dont.compile.test.as.dll (
-        match "dont.compile.test.as.dll" |> fileExists with
-        | None ->
+        if "dont.compile.test.as.dll" |> fileExists |> Option.isNone then
             // if exist test.ok (del /f /q test.ok)
             // %CLIX% .\test--optimize-client-of-lib.exe && (
             let run () = clix "test--optimize-client-of-lib.exe" ""
@@ -373,19 +365,17 @@ let singleTestRun' cfg testDir =
             // @echo :AS_DLL failed
             // set ERRORMSG=%ERRORMSG% AS_DLL failed;
             // )
-            run |> withTestOkFile
+            do! run |> withTestOkFile
         //)
-        | Some _ -> Skipped "dont.compile.test.as.dll found"
+        }
 
     // :WRAPPER_NAMESPACE
     // @echo do :WRAPPER_NAMESPACE
-    let runWRAPPER_NAMESPACE () =
+    let runWRAPPER_NAMESPACE () = processor {
         // if NOT EXIST dont.use.wrapper.namespace (
-        match "dont.use.wrapper.namespace" |> fileExists with
-        | None ->
+        if "dont.use.wrapper.namespace" |> fileExists |> Option.isNone then
             // if exist test.ml (
-            match "test.ml" |> fileExists with
-            | Some _ ->
+            if "test.ml" |> fileExists |> Option.isSome then
                 // if exist test.ok (del /f /q test.ok)
                 // %CLIX% .\tmptest3.exe && (
                 let run () = clix "tmptest3.exe" ""
@@ -393,21 +383,18 @@ let singleTestRun' cfg testDir =
                 // @echo :WRAPPER_NAMESPACE failed
                 // set ERRORMSG=%ERRORMSG% WRAPPER_NAMESPACE failed;
                 // )
-                run |> withTestOkFile
+                do! run |> withTestOkFile
             // )
-            | None -> Skipped "test.ml not found"
         //)
-        | Some _ -> Skipped "dont.use.wrapper.namespace found"
+        }
 
     // :WRAPPER_NAMESPACE_OPT
     // @echo do :WRAPPER_NAMESPACE_OPT
-    let runWRAPPER_NAMESPACE_OPT () =
+    let runWRAPPER_NAMESPACE_OPT () = processor {
         // if NOT EXIST dont.use.wrapper.namespace (
-        match "dont.use.wrapper.namespace" |> fileExists with
-        | None ->
+        if "dont.use.wrapper.namespace" |> fileExists |> Option.isNone then
             // if exist test.ml (
-            match "test.ml" |> fileExists with
-            | Some _ ->
+            if "test.ml" |> fileExists |> Option.isSome then
                 // if exist test.ok (del /f /q test.ok)
                 // %CLIX% .\tmptest3--optimize.exe && (
                 let run () = clix "tmptest3--optimize.exe" ""
@@ -415,11 +402,10 @@ let singleTestRun' cfg testDir =
                 // @echo :WRAPPER_NAMESPACE_OPT failed
                 // set ERRORMSG=%ERRORMSG% WRAPPER_NAMESPACE_OPT failed;
                 // )
-                run |> withTestOkFile
+                do! run |> withTestOkFile
             // )
-            | None -> Skipped "test.ml not found"
         // )
-        | Some _ -> Skipped "dont.use.wrapper.namespace found"
+        }
 
     let run = function
         | FSI_FILE -> runFSI_FILE
@@ -472,15 +458,13 @@ let singleTestRun config testDir =
         //exit /b %ERRORLEVEL% 
         Assert.Fail (sprintf "ERRORLEVEL %i %s" err msg)
 
-    let tests config p =
+    let tests config p = processor {
         //dir build.ok > NUL ) || (
         //  @echo 'build.ok' not found.
         //  set ERRORMSG=%ERRORMSG% Skipped because 'build.ok' not found.
         //  goto :ERROR
         //)
-        match testDir/"build.ok" |> fileExists with
-        | None -> Error (-1,"Skipped because 'build.ok' not found.")
-        | Some _ ->
+        if testDir/"build.ok" |> fileExists |> Option.isSome then
             // call %~d0%~p0..\config.bat
             let cfg = config
             // if errorlevel 1 (
@@ -500,12 +484,16 @@ let singleTestRun config testDir =
             // )
             ignore "already checked at test suite startup"
 
-            singleTestRun' cfg testDir p ()
+            do! singleTestRun' cfg testDir p ()
+        }
 
-    let checkRun = function
-        | OK -> doneOK ()
-        | Skipped msg -> doneSkipped msg
-        | Error (err,msg) -> doneError err msg
-    
-    (fun p -> tests config p |> checkRun)
+    let flow p =    
+        tests config p
+        |> Attempt.Run
+        |> function
+            | Success () -> doneOK ()
+            | Failure (Skipped msg) -> doneSkipped msg
+            | Failure (Error (err,msg)) -> doneError err msg
+
+    flow
         
