@@ -150,3 +150,8 @@ let createTestCaseData (group,name) list =
     list
     |> Seq.map testCaseData
 
+let checkTestResult =
+    function
+    | Success () -> ()
+    | Failure (Error (err, msg)) -> Assert.Fail (sprintf "ERRORLEVEL %i %s" err msg)
+    | Failure (Skipped msg) -> Assert.Ignore(sprintf "skipped. Reason: %s" msg)

@@ -101,11 +101,6 @@ module Events =
 
     [<Test; TestCaseSource("permutations")>]
     let events p =
-        let failIfError = 
-            function
-            | Success () -> ()
-            | Failure (Error (err, msg)) -> Assert.Fail (sprintf "ERRORLEVEL %i %s" err msg)
-            | Failure (Skipped msg) -> Assert.Inconclusive(msg)
-        let checkFailure f c p = (f c p) >> Attempt.Run >> (fun x -> failIfError x)
+        let checkFailure f c p = (f c p) >> Attempt.Run >> (fun x -> checkTestResult x)
         p |> test [build |> checkFailure; run |> checkFailure]
 

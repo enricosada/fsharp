@@ -442,21 +442,21 @@ let singleTestRun config testDir =
         //echo Ran fsharp %~f0 ok.
         log "Ran fsharp %s ok." testDir
         //exit /b 0
-        ()
+        Success () |> NUnitConf.checkTestResult
 
     //:Skip
     let doneSkipped msg =
         //echo Skipped %~f0
         log "Skipped %s" testDir
         //exit /b 0
-        Assert.Ignore (sprintf "skipped. Reason: %s" msg)
+        Failure (Skipped msg) |> NUnitConf.checkTestResult
 
     //:Error
     let doneError err msg =
         //echo %ERRORMSG%
         log "%s" msg
         //exit /b %ERRORLEVEL% 
-        Assert.Fail (sprintf "ERRORLEVEL %i %s" err msg)
+        Failure (Error(err,msg)) |> NUnitConf.checkTestResult
 
     let tests config p = processor {
         //dir build.ok > NUL ) || (

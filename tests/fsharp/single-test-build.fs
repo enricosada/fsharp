@@ -130,7 +130,7 @@ let singleTestBuild cfg testDir =
         //echo Test Script Failed (perhaps test did not emit test.ok signal file?)
         //endlocal
         //exit /b %ERRORLEVEL%
-        Assert.Fail (sprintf "ERRORLEVEL %i %s" err msg)
+        Failure (Error(err,msg)) |> NUnitConf.checkTestResult
 
     let genericErrorMessage = "Test Script Failed (perhaps test did not emit test.ok signal file?)"
 
