@@ -86,14 +86,17 @@ module Events =
         let clix exe = exec exe >> checkResult
         let fsi args = Commands.fsi exec cfg.FSI args >> checkResult
 
+        use testOkFile = FileGuard.create (dir/"test.ok")
+
         // %CLIX% "%FSI%" test.fs && (
-        do! withFileGuard (dir/"test.ok") (fun () -> fsi "" ["test.fs"])
+        do! fsi "" ["test.fs"]
 
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :FSI failed;
         // goto Error
         // set ERRORMSG=%ERRORMSG% FSI failed;
         // )
+        do! testOkFile |> NUnitConf.checkGuardExists
 
         // %CLIX% .\testcs.exe
         do! clix (dir/"testcs.exe") ""

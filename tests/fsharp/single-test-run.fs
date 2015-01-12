@@ -104,7 +104,7 @@ let singleTestRun' cfg testDir =
 
     let fsi_flags = cfg.fsi_flags
 
-    let createTestOkFile () = NUnitConf.fileGuard (testDir/"test.ok")
+    let createTestOkFile () = NUnitConf.FileGuard.create (testDir/"test.ok")
 
     let skipIfExists file = processor {
         if fileExists file |> Option.isSome
