@@ -7,7 +7,7 @@ open System.Collections.Generic
 open PlatformHelpers
 open Microsoft.Win32
 
-type RunError = Error of (int * string) | Skipped of string
+type RunError = GenericError of string | ProcessExecError of (int * string) | Skipped of string
 
 type TestConfig = {
     EnvironmentVariables: Map<string,string>
@@ -41,7 +41,7 @@ and INSTALL_SKU = Clean | DesktopExpress | WebExpress | Ultimate
 
 let checkResult = 
     function 
-    | CmdResult.ErrorLevel err -> let x = err, (sprintf "ERRORLEVEL %d" err) in Failure (RunError.Error x)
+    | CmdResult.ErrorLevel err -> let x = err, (sprintf "ERRORLEVEL %d" err) in Failure (RunError.ProcessExecError x)
     | CmdResult.Success -> Success ()
 
 let GetSdk81Path sdkIdent =

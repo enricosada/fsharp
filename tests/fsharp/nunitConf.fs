@@ -153,5 +153,49 @@ let createTestCaseData (group,name) list =
 let checkTestResult =
     function
     | Success () -> ()
-    | Failure (Error (err, msg)) -> Assert.Fail (sprintf "ERRORLEVEL %i %s" err msg)
+    | Failure (GenericError msg) -> Assert.Fail (msg)
+    | Failure (ProcessExecError (err, msg)) -> Assert.Fail (sprintf "ERRORLEVEL %i %s" err msg)
     | Failure (Skipped msg) -> Assert.Ignore(sprintf "skipped. Reason: %s" msg)
+
+
+let skip msg () = Failure (Skipped msg)
+let genericError msg () = Failure (GenericError msg)
+let errorLevel exitCode msg () = Failure (ProcessExecError (exitCode,msg))
+
+[<AllowNullLiteral>]
+type IFileGuard =
+    inherit IDisposable
+    abstract path : unit -> string
+    abstract exists : unit -> bool
+
+let fileGuard path = 
+    path |> fileExists |> Option.iter File.Delete
+
+    { new IFileGuard with
+        member x.Dispose() = 
+             path |> fileExists |> Option.iter File.Delete
+       
+        member x.exists() = 
+            path |> fileExists |> Option.isSome
+        
+        member x.path() = path
+    }
+
+let withFileGuard path (f: Attempt<_,_>) = processor {
+    //  if exist test.ok (del /f /q test.ok)
+    path |> fileExists |> Option.iter File.Delete
+    //  %CLIX% "%FSI%" %fsi_flags% < %sources% && (
+    //  dir test.ok > NUL 2>&1 ) || (
+    //  @echo FSI_STDIN failed;
+    //  set ERRORMSG=%ERRORMSG% FSI_STDIN failed;
+    //  )
+    do! f ()
+
+    if path |> fileExists |> Option.isNone then
+        return! genericError (sprintf "exit code 0 but %s file doesn't exists" (Path.GetFileName(path)))
+    }
+
+let checkGuardExists (guard: IFileGuard) = processor {
+    if not <| guard.exists ()
+    then return! genericError (sprintf "exit code 0 but %s file doesn't exists" (Path.GetFileName(guard.path ())))
+    }

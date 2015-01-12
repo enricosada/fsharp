@@ -128,9 +128,10 @@ let singleTestBuild cfg testDir =
     //:Error
     let doneError err msg =
         //echo Test Script Failed (perhaps test did not emit test.ok signal file?)
+        log "%s" msg
         //endlocal
         //exit /b %ERRORLEVEL%
-        Failure (Error(err,msg)) |> NUnitConf.checkTestResult
+        Failure (err) |> NUnitConf.checkTestResult
 
     let genericErrorMessage = "Test Script Failed (perhaps test did not emit test.ok signal file?)"
 
@@ -145,7 +146,7 @@ let singleTestBuild cfg testDir =
     ///    @if ERRORLEVEL 1 goto Error      <para/>
     /// )                                   <para/>
     /// </summary>
-    let doPeverify cmd = processor { 
+    let doPeverify cmd = processor {
         if testDir/"dont.run.peverify" |> fileExists |> Option.isNone
         then do! peverify cmd
         }
@@ -410,6 +411,7 @@ let singleTestBuild cfg testDir =
         |> function 
             | Success () -> doneOk () 
             | Failure (Skipped _) -> doneSkipped ()
-            | Failure (Error (err,msg)) -> doneError err msg
+            | Failure (GenericError msg) -> doneError (GenericError msg) msg
+            | Failure (ProcessExecError (err,msg)) -> doneError (ProcessExecError(err,msg)) msg
     
     flow
