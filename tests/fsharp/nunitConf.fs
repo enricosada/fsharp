@@ -8,6 +8,19 @@ open UpdateCmd
 open TestConfig
 open PlatformHelpers
 
+
+let checkTestResult =
+    function
+    | Success () -> ()
+    | Failure (GenericError msg) -> Assert.Fail (msg)
+    | Failure (ProcessExecError (err, msg)) -> Assert.Fail (sprintf "ERRORLEVEL %i %s" err msg)
+    | Failure (Skipped msg) -> Assert.Ignore(sprintf "skipped. Reason: %s" msg)
+
+
+let skip msg () = Failure (Skipped msg)
+let genericError msg () = Failure (GenericError msg)
+let errorLevel exitCode msg () = Failure (ProcessExecError (exitCode,msg))
+
 let initializeSuite () =
 
     let configurationName = DEBUG
@@ -18,13 +31,22 @@ let initializeSuite () =
 
     let env = defaults |> join (envVars ())
 
-    //TODO check FSCBinPath directory exists
     processor {
-        do! updateCmd env { Configuration = configurationName; Ngen = doNgen; } |> Attempt.Run
+        do! updateCmd env { Configuration = configurationName; Ngen = doNgen; }
+            |> Attempt.Run
+            |> function Success () -> Success () | Failure msg -> genericError msg ()
 
         let cfg = config env
 
         logConfig cfg
+
+        let checkfscBinPath () = processor {
+            let fscBinPath = cfg.EnvironmentVariables |> Map.tryFind "FSCBinPath"
+            return!
+                match fscBinPath |> Option.bind fileExists with
+                | Some _ -> Success 
+                | None -> genericError "environment variable 'FSCBinPath' is required"
+            }
 
         let smokeTest () = processor {
             let tempFile ext = 
@@ -35,12 +57,10 @@ let initializeSuite () =
             let tempDir = Commands.createTempDir ()
             let exec exe args = 
                 log "%s %s" exe args
-                exec' { RedirectError = Some (log "%s"); RedirectOutput = Some (log "%s"); RedirectInput = None } tempDir envVars exe args
+                exec' { RedirectError = Some (log "%s"); RedirectOutput = Some (log "%s"); RedirectInput = None } tempDir cfg.EnvironmentVariables exe args
             let execIn input exe args = 
                 log "%s %s" exe args
-                exec' { RedirectError = Some (log "%s"); RedirectOutput = Some (log "%s"); RedirectInput = Some input } tempDir envVars exe args
-
-            let checkResult = function CmdResult.ErrorLevel err -> Failure (sprintf "ERRORLEVEL %d" err) | CmdResult.Success -> Success ()
+                exec' { RedirectError = Some (log "%s"); RedirectOutput = Some (log "%s"); RedirectInput = Some input } tempDir cfg.EnvironmentVariables exe args
 
             do! Commands.fsc exec cfg.FSC "" [ tempFile ".fs" ] |> checkResult
 
@@ -48,6 +68,8 @@ let initializeSuite () =
         
             }
     
+        do! checkfscBinPath ()
+
         do! smokeTest ()
 
         return cfg
@@ -62,10 +84,10 @@ let suiteHelpers = lazy (
 
 [<AttributeUsage(AttributeTargets.Method ||| AttributeTargets.Class ||| AttributeTargets.Interface ||| AttributeTargets.Assembly, AllowMultiple = true)>]
 type public InitializeSuiteAttribute () =
-    inherit System.Attribute()
+    inherit Attribute()
 
     interface ITestAction with
-        member x.Targets = (ActionTargets.Test ||| ActionTargets.Suite)
+        member x.Targets = ActionTargets.Test ||| ActionTargets.Suite
         member x.BeforeTest details =
             if details.IsSuite 
             then suiteHelpers.Force() |> ignore
@@ -75,7 +97,7 @@ type public InitializeSuiteAttribute () =
     
     // Workaround: NUnit try to find a *public* instance property Targets (ignoring cast to ITestAction)
     //
-    // x.Targets doesn't work because is implemented as follow
+    // x.Targets doesn't work because is implemented as method instead of readonly property, as follow
     //
     //    [SpecialName]
     //    ActionTargets ITestAction.NUnit\u002DFramework\u002DITestAction\u002Dget_Targets()
@@ -93,7 +115,7 @@ type public InitializeSuiteAttribute () =
     //      }
     //    }
     //
-    member x.Targets = (ActionTargets.Test ||| ActionTargets.Suite)
+    member x.Targets = ActionTargets.Test ||| ActionTargets.Suite
 
 
 [<assembly:InitializeSuite()>]
@@ -140,39 +162,24 @@ let createTestCaseData (group,name) list =
     list
     |> Seq.map testCaseData
 
-let checkTestResult =
-    function
-    | Success () -> ()
-    | Failure (GenericError msg) -> Assert.Fail (msg)
-    | Failure (ProcessExecError (err, msg)) -> Assert.Fail (sprintf "ERRORLEVEL %i %s" err msg)
-    | Failure (Skipped msg) -> Assert.Ignore(sprintf "skipped. Reason: %s" msg)
-
-
-let skip msg () = Failure (Skipped msg)
-let genericError msg () = Failure (GenericError msg)
-let errorLevel exitCode msg () = Failure (ProcessExecError (exitCode,msg))
-
 module FileGuard =
+
+    let private remove = fileExists >> Option.iter File.Delete
+
     [<AllowNullLiteral>]
-    type IFileGuard =
-        inherit IDisposable
-        abstract path : unit -> string
-        abstract exists : unit -> bool
+    type T (path: string) =
+        member x.Path = path
+        interface IDisposable with
+            member x.Dispose () = path |> remove
 
     let create path = 
-        path |> fileExists |> Option.iter File.Delete
-
-        { new IFileGuard with
-            member x.Dispose() = 
-                 path |> fileExists |> Option.iter File.Delete
-       
-            member x.exists() = 
-                path |> fileExists |> Option.isSome
+        path |> remove
+        new T(path)
+    
+    let exists (guard: T) = guard.Path |> fileExists |> Option.isSome
         
-            member x.path() = path
-        }
 
-let checkGuardExists (guard: FileGuard.IFileGuard) = processor {
-    if not <| guard.exists ()
-    then return! genericError (sprintf "exit code 0 but %s file doesn't exists" (Path.GetFileName(guard.path ())))
+let checkGuardExists guard = processor {
+    if not <| (guard |> FileGuard.exists)
+    then return! genericError (sprintf "exit code 0 but %s file doesn't exists" (guard.Path |> Path.GetFileName))
     }

@@ -9,14 +9,14 @@ open SingleTestBuild
 open SingleTestRun
 open NUnitConf
 
+let allPermutations = NUnitConf.allPermutation
+
+let createTestCaseData name = NUnitConf.createTestCaseData ("core", name)
+
 let test phases (p: Permutation) =
     let dir = NUnit.Framework.TestContext.CurrentContext.Test.Properties.["DIRECTORY"] :?> string
     let cfg = suiteHelpers.Value
     phases |> List.iter (fun phase -> phase cfg dir p)
-
-let allPermutations = NUnitConf.allPermutation
-
-let createTestCaseData name = NUnitConf.createTestCaseData ("core", name)
 
 module Access =
     let permutations = allPermutations |> createTestCaseData "access"
