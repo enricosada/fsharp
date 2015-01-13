@@ -156,3 +156,13 @@ type AttemptBuilder() =
                 this.Delay(fun () -> body enum.Current)))
 
 let processor = new AttemptBuilder()
+
+let envVars () = 
+    System.Environment.GetEnvironmentVariables () 
+    |> Seq.cast<System.Collections.DictionaryEntry>
+    |> Seq.map (fun d -> d.Key :?> string, d.Value :?> string)
+    |> Map.ofSeq
+
+let join p q = 
+    Seq.concat [ (Map.toSeq p) ; (Map.toSeq q) ]
+    |> Map.ofSeq
