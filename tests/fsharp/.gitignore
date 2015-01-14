@@ -4,5 +4,9 @@ test*.exe
 test*.pdb
 test*.dll
 
+lib*.dll
+lib*.pdb
+lib*.xml
+
 core/forwarders/orig
 core/forwarders/split

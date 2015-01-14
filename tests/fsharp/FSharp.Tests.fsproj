@@ -64,15 +64,16 @@
     <None Include="core\controlWpf\test.fsx" />
     <None Include="core\events\test.fs" />
     <None Include="core\events\testcs.cs" />
-    <!-- core/fsi-shadowcopy -->
     <None Include="core\fsi-shadowcopy\Library1.fs" />
     <None Include="core\fsi-shadowcopy\test1.fsx" />
     <None Include="core\fsi-shadowcopy\test2.fsx" />
-    <!-- core/forwarders -->
     <None Include="core\forwarders\a.cs" />
     <None Include="core\forwarders\b.cs" />
     <None Include="core\forwarders\c.fs" />
     <None Include="core\forwarders\test.fs" />
+    <None Include="core\fsfromcs\CsClient.csproj" />
+    <None Include="core\fsfromcs\lib.ml" />
+    <None Include="core\fsfromcs\test.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="nunit.framework, Version=2.6.3.13283, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77">

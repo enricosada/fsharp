@@ -211,7 +211,7 @@ module Forwarders =
     let testData = [ (new TestCaseData()) |> setTestDataInfo "forwarders" ]
 
     [<Test; TestCaseSource("testData")>]
-    let forwarders () = check  (processor {
+    let forwarders () = check (processor {
         let { Directory = dir; Config = cfg } = testConfig ()
 
         let exec path args =
@@ -278,4 +278,62 @@ module Forwarders =
 
         // popd
 
+        })
+
+module FsFromCs = 
+
+    let testData = [ (new TestCaseData()) |> setTestDataInfo "fsfromcs" ]
+
+    let build cfg dir = processor {
+        let exec path args =
+            log "%s %s" path args
+            Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
+        let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
+        let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
+        let csc args = Commands.csc exec cfg.CSC args >> checkResult
+        let fsc_flags = cfg.fsc_flags
+
+        // "%FSC%" %fsc_flags% -a --doc:lib.xml -o:lib.dll -g lib.ml
+        do! fsc (sprintf "%s -a --doc:lib.xml -o:lib.dll -g" fsc_flags) ["lib.ml"]
+
+        // "%PEVERIFY%" lib.dll
+        do! peverify "lib.dll"
+
+        // %CSC% /nologo /r:"%FSCOREDLLPATH%" /r:System.Core.dll /r:lib.dll /out:test.exe test.cs 
+        do! csc (sprintf """/nologo /r:"%s" /r:System.Core.dll /r:lib.dll /out:test.exe""" cfg.FSCOREDLLPATH) ["test.cs"]
+
+        // "%FSC%" %fsc_flags% -a --doc:lib--optimize.xml -o:lib--optimize.dll -g lib.ml
+        do! fsc (sprintf """%s -a --doc:lib--optimize.xml -o:lib--optimize.dll -g""" fsc_flags) ["lib.ml"]
+
+        // "%PEVERIFY%" lib--optimize.dll
+        do! peverify "lib--optimize.dll"
+
+        // %CSC% 
+        do! csc (sprintf """/nologo /r:"%s"  /r:System.Core.dll /r:lib--optimize.dll    /out:test--optimize.exe""" cfg.FSCOREDLLPATH) ["test.cs"]
+        
+        }
+
+    let run cfg dir = processor {
+        let exec path args =
+            log "%s %s" path args
+            Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
+        let clix exe = exec exe >> checkResult
+
+        // %CLIX% .\test.exe
+        do! clix (dir/"test.exe") ""
+
+        // %CLIX% .\test--optimize.exe
+        do! clix (dir/"test--optimize.exe") ""
+
+        }
+
+
+    [<Test; TestCaseSource("testData")>]
+    let fsfromcs () = check (processor {
+        let { Directory = dir; Config = cfg } = testConfig ()
+
+        do! build cfg dir
+
+        do! run cfg dir
+                
         })
