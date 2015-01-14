@@ -205,3 +205,77 @@ module ``FSI-Shadowcopy`` =
         })
 
     
+
+module Forwarders = 
+
+    let testData = [ (new TestCaseData()) |> setTestDataInfo "forwarders" ]
+
+    [<Test; TestCaseSource("testData")>]
+    let forwarders () = check  (processor {
+        let { Directory = dir; Config = cfg } = testConfig ()
+
+        let exec path args =
+            log "%s %s" path args
+            Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
+        let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
+        let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
+        let csc args = Commands.csc exec cfg.CSC args >> checkResult
+        let copy_y = Commands.copy_y dir
+        let mkdir = Commands.mkdir_p dir
+
+        // mkdir orig
+        mkdir "orig"
+        // mkdir split
+        mkdir "split"
+
+        // %CSC% /nologo  /target:library /out:orig\a.dll /define:PART1;PART2 a.cs
+        do! csc """/nologo  /target:library /out:orig\a.dll /define:PART1;PART2""" ["a.cs"]
+
+        // %CSC% /nologo  /target:library /out:orig\b.dll /r:orig\a.dll b.cs 
+        do! csc """/nologo  /target:library /out:orig\b.dll /r:orig\a.dll""" ["b.cs"]
+
+        // "%FSC%" -a -o:orig\c.dll -r:orig\b.dll -r:orig\a.dll c.fs
+        do! fsc """-a -o:orig\c.dll -r:orig\b.dll -r:orig\a.dll""" ["c.fs"]
+
+        // %CSC% /nologo  /target:library /out:split\a-part1.dll /define:PART1;SPLIT a.cs  
+        do! csc """/nologo  /target:library /out:split\a-part1.dll /define:PART1;SPLIT""" ["a.cs"]
+
+        // %CSC% /nologo  /target:library /r:split\a-part1.dll /out:split\a.dll /define:PART2;SPLIT a.cs
+        do! csc """/nologo  /target:library /r:split\a-part1.dll /out:split\a.dll /define:PART2;SPLIT""" ["a.cs"]
+
+        // copy /y orig\b.dll split\b.dll
+        copy_y ("orig"/"b.dll") ("split"/"b.dll")
+        // copy /y orig\c.dll split\c.dll
+        copy_y ("orig"/"c.dll") ("split"/"c.dll")
+
+        // "%FSC%" -o:orig\test.exe -r:orig\b.dll -r:orig\a.dll test.fs
+        do! fsc """-o:orig\test.exe -r:orig\b.dll -r:orig\a.dll""" ["test.fs"]
+
+        // "%FSC%" -o:split\test.exe -r:split\b.dll -r:split\a-part1.dll -r:split\a.dll test.fs
+        do! fsc """-o:split\test.exe -r:split\b.dll -r:split\a-part1.dll -r:split\a.dll""" ["test.fs"]
+
+        // "%FSC%" -o:split\test-against-c.exe -r:split\c.dll -r:split\a-part1.dll -r:split\a.dll test.fs
+        do! fsc """-o:split\test-against-c.exe -r:split\c.dll -r:split\a-part1.dll -r:split\a.dll""" ["test.fs"]
+
+        // pushd split
+        // "%PEVERIFY%" a-part1.dll
+        do! peverify ("split"/"a-part1.dll")
+
+        // REM "%PEVERIFY%" a.dll
+        // REM   @if ERRORLEVEL 1 goto Error
+
+        // "%PEVERIFY%" b.dll
+        do! peverify ("split"/"b.dll")
+
+        // "%PEVERIFY%" c.dll
+        do! peverify ("split"/"c.dll")
+
+        // "%PEVERIFY%" test.exe
+        do! peverify ("split"/"test.exe")
+
+        // "%PEVERIFY%" test-against-c.exe
+        do! peverify ("split"/"test-against-c.exe")
+
+        // popd
+
+        })

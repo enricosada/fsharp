@@ -16,6 +16,11 @@ let copy_y workDir source to' =
     log "copy /y %s %s" source to'
     File.Copy( source |> getfullpath workDir, to' |> getfullpath workDir, true)
 
+/// mkdir orig
+let mkdir_p workDir dir =
+    log "mkdir %s" dir
+    Directory.CreateDirectory ( Path.Combine(workDir, dir) ) |> ignore
+
 // echo. > build.ok
 let ``echo._tofile`` workDir text p =
     log "echo.%s> %s" text p
