@@ -21,31 +21,43 @@ let skip msg () = Failure (Skipped msg)
 let genericError msg () = Failure (GenericError msg)
 let errorLevel exitCode msg () = Failure (ProcessExecError (exitCode,msg))
 
+let envVars () = 
+    System.Environment.GetEnvironmentVariables () 
+    |> Seq.cast<System.Collections.DictionaryEntry>
+    |> Seq.map (fun d -> d.Key :?> string, d.Value :?> string)
+    |> Map.ofSeq
+
 let initializeSuite () =
 
     let configurationName = DEBUG
     let doNgen = false;
     let FSCBinPath = System.IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", (sprintf "%O" configurationName), "net40", "bin")
 
-    let defaults = [ "FSCBinPath", FSCBinPath ] |> Map.ofList
+    let mapWithDefaults defaults m =
+        Seq.concat [ (Map.toSeq defaults) ; (Map.toSeq m) ] |> Map.ofSeq
 
-    let env = defaults |> join (envVars ())
+    let env = envVars () |> mapWithDefaults ( ["FSCBinPath", FSCBinPath] |> Map.ofList )
 
     processor {
         do! updateCmd env { Configuration = configurationName; Ngen = doNgen; }
             |> Attempt.Run
             |> function Success () -> Success () | Failure msg -> genericError msg ()
 
-        let cfg = config env
+        let cfg =
+            let c = config env
+            let usedEnvVars =
+                c.EnvironmentVariables 
+                |> Map.add "FSC" c.FSC             
+            { c with EnvironmentVariables = usedEnvVars }
 
         logConfig cfg
 
         let checkfscBinPath () = processor {
             let fscBinPath = cfg.EnvironmentVariables |> Map.tryFind "FSCBinPath"
             return!
-                match fscBinPath |> Option.bind fileExists with
-                | Some _ -> Success 
-                | None -> genericError "environment variable 'FSCBinPath' is required"
+                match fscBinPath |> Option.bind directoryExists with
+                | Some _ -> Success
+                | None -> genericError "environment variable 'FSCBinPath' is required to be a valid directory"
             }
 
         let smokeTest () = processor {
@@ -57,10 +69,10 @@ let initializeSuite () =
             let tempDir = Commands.createTempDir ()
             let exec exe args = 
                 log "%s %s" exe args
-                exec' { RedirectError = Some (log "%s"); RedirectOutput = Some (log "%s"); RedirectInput = None } tempDir cfg.EnvironmentVariables exe args
+                Process.exec { RedirectError = Some (log "%s"); RedirectOutput = Some (log "%s"); RedirectInput = None } tempDir cfg.EnvironmentVariables exe args
             let execIn input exe args = 
                 log "%s %s" exe args
-                exec' { RedirectError = Some (log "%s"); RedirectOutput = Some (log "%s"); RedirectInput = Some input } tempDir cfg.EnvironmentVariables exe args
+                Process.exec { RedirectError = Some (log "%s"); RedirectOutput = Some (log "%s"); RedirectInput = Some input } tempDir cfg.EnvironmentVariables exe args
 
             do! Commands.fsc exec cfg.FSC "" [ tempFile ".fs" ] |> checkResult
 
@@ -92,8 +104,8 @@ type public InitializeSuiteAttribute () =
             if details.IsSuite 
             then suiteHelpers.Force() |> ignore
 
-        member x.AfterTest details = 
-            ()  
+        member x.AfterTest details =
+            ()
     
     // Workaround: NUnit try to find a *public* instance property Targets (ignoring cast to ITestAction)
     //
@@ -121,46 +133,43 @@ type public InitializeSuiteAttribute () =
 [<assembly:InitializeSuite()>]
 ()
 
-let allPermutation = 
-    [ FSI_FILE; FSI_STDIN; FSI_STDIN_OPT; FSI_STDIN_GUI;
-      FSC_BASIC; FSC_HW; FSC_O3;
-      GENERATED_SIGNATURE; EMPTY_SIGNATURE; EMPTY_SIGNATURE_OPT; 
-      FSC_OPT_MINUS_DEBUG; FSC_OPT_PLUS_DEBUG; 
-      FRENCH; SPANISH;
-      AS_DLL; 
-      WRAPPER_NAMESPACE; WRAPPER_NAMESPACE_OPT ]
+module FSharpTestSuite =
 
-let getTagsOfFile path =
-    match File.ReadLines(path) |> Seq.tryFind (fun _ -> true) with
-    | None -> []
-    | Some line -> 
-        line.TrimStart('/').Split([| '#' |], StringSplitOptions.RemoveEmptyEntries)
-        |> Seq.map (fun s -> s.Trim())
-        |> Seq.filter (fun s -> s.Length > 0)
-        |> Seq.distinct
+    let allPermutation = 
+        [ FSI_FILE; FSI_STDIN; FSI_STDIN_OPT; FSI_STDIN_GUI;
+          FSC_BASIC; FSC_HW; FSC_O3;
+          GENERATED_SIGNATURE; EMPTY_SIGNATURE; EMPTY_SIGNATURE_OPT; 
+          FSC_OPT_MINUS_DEBUG; FSC_OPT_PLUS_DEBUG; 
+          FRENCH; SPANISH;
+          AS_DLL; 
+          WRAPPER_NAMESPACE; WRAPPER_NAMESPACE_OPT ]
+
+    let getTagsOfFile path =
+        match File.ReadLines(path) |> Seq.tryFind (fun _ -> true) with
+        | None -> []
+        | Some line -> 
+            line.TrimStart('/').Split([| '#' |], StringSplitOptions.RemoveEmptyEntries)
+            |> Seq.map (fun s -> s.Trim())
+            |> Seq.filter (fun s -> s.Length > 0)
+            |> Seq.distinct
+            |> Seq.toList
+
+    let getTestFileMetadata dir =
+        Directory.EnumerateFiles(dir, "*.fs*")
         |> Seq.toList
+        |> List.collect getTagsOfFile
 
-let getTestFileMetadata dir =
-    Directory.EnumerateFiles(dir, "*.fs*")
-    |> Seq.toList
-    |> List.collect getTagsOfFile
+    let setTestDataInfo (group,name) (tc: TestCaseData) =
+        let testDir = Path.Combine(__SOURCE_DIRECTORY__, group, name)
+        let categories = [ group; name ] @ (testDir |> getTestFileMetadata)
+        let properties = [ "DIRECTORY", testDir ] |> Map.ofList
 
-let createTestCaseData (group,name) list =
-    let testDir = Path.Combine(__SOURCE_DIRECTORY__, group, name)
-    let categories = [group; name] @ (testDir |> getTestFileMetadata)
-    let properties = [ "DIRECTORY", testDir ] |> Map.ofList
-
-    let testCaseData (p: Permutation) =
-        let name = sprintf "%A" p
-        let tc = new TestCaseData( p )
-        tc.SetName(name) |> ignore
-        tc.SetCategory(sprintf "%A" p) |> ignore
         categories |> List.iter (fun (c: string) -> tc.Categories.Add(c) |> ignore)
         properties |> Map.iter (fun k v -> tc.Properties.Add(k,v))
-        tc    
+        tc
     
-    list
-    |> Seq.map testCaseData
+    let setCategory s (tc: TestCaseData) =
+        tc.SetCategory(s)
 
 module FileGuard =
 
@@ -183,3 +192,5 @@ let checkGuardExists guard = processor {
     if not <| (guard |> FileGuard.exists)
     then return! genericError (sprintf "exit code 0 but %s file doesn't exists" (guard.Path |> Path.GetFileName))
     }
+
+

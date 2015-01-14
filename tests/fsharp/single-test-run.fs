@@ -6,7 +6,7 @@ open TestConfig
 open NUnit.Framework
 open PlatformHelpers
 
-let singleTestRun' cfg testDir =
+let private singleTestRun' cfg testDir =
 
     let fullpath path = if Path.IsPathRooted(path) then path else (testDir/path)
     let fileExists = fullpath >> fileExists
@@ -85,10 +85,10 @@ let singleTestRun' cfg testDir =
 
     let exec exe args = 
         log "%s %s" exe args
-        exec' { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } testDir cfg.EnvironmentVariables exe args
+        Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } testDir cfg.EnvironmentVariables exe args
 
     let execIn input exe args = 
-        exec' { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = Some input; } testDir cfg.EnvironmentVariables exe args
+        Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = Some input; } testDir cfg.EnvironmentVariables exe args
 
     let clix exe = exec (testDir/exe) >> checkResult
     let fsi args = Commands.fsi exec cfg.FSI args >> checkResult
@@ -466,25 +466,25 @@ let singleTestRun config testDir =
     ignore "unused"
 
     //:Ok
-    let doneOK () =
+    let doneOK x =
         //echo Ran fsharp %~f0 ok.
         log "Ran fsharp %s ok." testDir
         //exit /b 0
-        Success () |> NUnitConf.checkTestResult
+        Success x
 
     //:Skip
     let doneSkipped msg =
         //echo Skipped %~f0
         log "Skipped %s" testDir
         //exit /b 0
-        Failure (Skipped msg) |> NUnitConf.checkTestResult
+        Failure (Skipped msg)
 
     //:Error
     let doneError err msg =
         //echo %ERRORMSG%
         log "%s" msg
         //exit /b %ERRORLEVEL% 
-        Failure (err) |> NUnitConf.checkTestResult
+        Failure (err)
 
     let tests config p = processor {
         //dir build.ok > NUL ) || (
@@ -515,7 +515,7 @@ let singleTestRun config testDir =
             do! singleTestRun' cfg testDir p ()
         }
 
-    let flow p =    
+    let flow p () =    
         tests config p
         |> Attempt.Run
         |> function

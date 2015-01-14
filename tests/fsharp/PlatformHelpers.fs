@@ -1,7 +1,8 @@
 module PlatformHelpers
 
-type PROCESSOR_ARCHITECTURE = X86 | IA64 | AMD64 | Unknown of string
+type ProcessorArchitecture = X86 | IA64 | AMD64 | Unknown of string
     with override this.ToString() = match this with X86 -> "x86" | IA64 -> "IA64" | AMD64 -> "AMD64" | Unknown arc -> arc
+
 
 let parseProcessorArchitecture (s: string) =
     match s.ToUpper() with
@@ -21,9 +22,7 @@ let parseProcessorArchitecture (s: string) =
 
 open System.IO
 
-let inline (/) a b = Path.Combine(a,b)
-
-let fileExists path = if path |> File.Exists then Some path else None
+type FilePath = string
 
 type CmdResult = Success | ErrorLevel of int
 
@@ -33,68 +32,70 @@ type CmdArguments = {
     RedirectInput: (StreamWriter -> unit) option;
 }
 
-type FilePath = string
+module Process =
 
-open System.Diagnostics
+    open System.Diagnostics
 
-let exec' cmdArgs (workDir: FilePath) envs (path: FilePath) arguments =
-    //TODO gestione errore
-    let processInfo = new ProcessStartInfo(path, arguments)
-    processInfo.CreateNoWindow <- true
-    processInfo.UseShellExecute <- false
-    processInfo.WorkingDirectory <- workDir
+    let exec cmdArgs (workDir: FilePath) envs (path: FilePath) arguments =
+        //TODO gestione errore
+        let processInfo = new ProcessStartInfo(path, arguments)
+        processInfo.CreateNoWindow <- true
+        processInfo.UseShellExecute <- false
+        processInfo.WorkingDirectory <- workDir
 
-    let p = new Process()
-    p.EnableRaisingEvents <- true
-    p.StartInfo <- processInfo
+        envs
+        |> Map.iter (fun k v -> processInfo.EnvironmentVariables.[k] <- v)
 
-    cmdArgs.RedirectOutput
-    |> Option.map (fun f -> (fun (ea: DataReceivedEventArgs) -> ea.Data |> f)) 
-    |> Option.iter (fun newOut ->
-        processInfo.RedirectStandardOutput <- true
-        p.OutputDataReceived.Add newOut
-    )
+        let p = new Process()
+        p.EnableRaisingEvents <- true
+        p.StartInfo <- processInfo
 
-    cmdArgs.RedirectError 
-    |> Option.map (fun f -> (fun (ea: DataReceivedEventArgs) -> ea.Data |> f)) 
-    |> Option.iter (fun newErr ->
-        processInfo.RedirectStandardError <- true
-        p.ErrorDataReceived.Add newErr
-    )
+        cmdArgs.RedirectOutput
+        |> Option.map (fun f -> (fun (ea: DataReceivedEventArgs) -> ea.Data |> f)) 
+        |> Option.iter (fun newOut ->
+            processInfo.RedirectStandardOutput <- true
+            p.OutputDataReceived.Add newOut
+        )
 
-    cmdArgs.RedirectInput
-    |> Option.iter (fun _ -> p.StartInfo.RedirectStandardInput <- true)
+        cmdArgs.RedirectError 
+        |> Option.map (fun f -> (fun (ea: DataReceivedEventArgs) -> ea.Data |> f)) 
+        |> Option.iter (fun newErr ->
+            processInfo.RedirectStandardError <- true
+            p.ErrorDataReceived.Add newErr
+        )
 
-    let exitedAsync (proc: Process) =
-        let tcs = new System.Threading.Tasks.TaskCompletionSource<int>();
-        p.Exited.Add (fun s -> 
-            tcs.TrySetResult(proc.ExitCode) |> ignore
-            proc.Dispose())
-        tcs.Task
+        cmdArgs.RedirectInput
+        |> Option.iter (fun _ -> p.StartInfo.RedirectStandardInput <- true)
 
-    p.Start() |> ignore
+        let exitedAsync (proc: Process) =
+            let tcs = new System.Threading.Tasks.TaskCompletionSource<int>();
+            p.Exited.Add (fun s -> 
+                tcs.TrySetResult(proc.ExitCode) |> ignore
+                proc.Dispose())
+            tcs.Task
+
+        p.Start() |> ignore
     
-    cmdArgs.RedirectOutput |> Option.iter (fun _ -> p.BeginOutputReadLine())
-    cmdArgs.RedirectError |> Option.iter (fun _ -> p.BeginErrorReadLine())
+        cmdArgs.RedirectOutput |> Option.iter (fun _ -> p.BeginOutputReadLine())
+        cmdArgs.RedirectError |> Option.iter (fun _ -> p.BeginErrorReadLine())
 
-    cmdArgs.RedirectInput
-    |> Option.iter (fun input ->
-        let pipeInput = async {
-            let inputWriter = p.StandardInput
-            input inputWriter
-            do! inputWriter.FlushAsync () |> Async.AwaitIAsyncResult |> Async.Ignore
-            inputWriter.Close ()
-        }
-        pipeInput |> Async.Start
-    )
+        cmdArgs.RedirectInput
+        |> Option.iter (fun input ->
+            let pipeInput = async {
+                let inputWriter = p.StandardInput
+                input inputWriter
+                do! inputWriter.FlushAsync () |> Async.AwaitIAsyncResult |> Async.Ignore
+                inputWriter.Close ()
+            }
+            pipeInput |> Async.Start
+        )
 
-    let exitCode = p |> exitedAsync |> Async.AwaitTask |> Async.RunSynchronously
+        let exitCode = p |> exitedAsync |> Async.AwaitTask |> Async.RunSynchronously
 
-    match exitCode with
-    | 0 -> Success
-    | err -> ErrorLevel err
+        match exitCode with
+        | 0 -> Success
+        | err -> ErrorLevel err
 
-let log format = Printf.ksprintf (fun s -> printfn "%s" s) format
 
 
 type Result<'S,'F> =
@@ -157,12 +158,11 @@ type AttemptBuilder() =
 
 let processor = new AttemptBuilder()
 
-let envVars () = 
-    System.Environment.GetEnvironmentVariables () 
-    |> Seq.cast<System.Collections.DictionaryEntry>
-    |> Seq.map (fun d -> d.Key :?> string, d.Value :?> string)
-    |> Map.ofSeq
 
-let join p q = 
-    Seq.concat [ (Map.toSeq p) ; (Map.toSeq q) ]
-    |> Map.ofSeq
+let log format = Printf.ksprintf (fun s -> printfn "%s" s) format
+
+let inline (/) a b = Path.Combine(a,b)
+
+let fileExists path = if path |> File.Exists then Some path else None
+let directoryExists path = if path |> Directory.Exists then Some path else None
+

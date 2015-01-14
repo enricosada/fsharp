@@ -28,26 +28,28 @@ let updateCmd envVars args = processor {
     ignore "useless help"
 
     //:ok
-    let env k = envVars |> Map.find k
+    let env k () = match envVars |> Map.tryFind k with None -> Failure (sprintf "environment variable '%s' not found" k) | Some x -> Success x
     let ``~dp0`` = __SOURCE_DIRECTORY__
     let exec exe args = 
         log "%s %s" exe args
-        exec' { RedirectError = Some (log "%s"); RedirectOutput = Some (log "%s"); RedirectInput = None } ``~dp0`` envVars exe args
+        Process.exec { RedirectError = Some (log "%s"); RedirectOutput = Some (log "%s"); RedirectInput = None } ``~dp0`` envVars exe args
 
     // set BINDIR=%~dp0..\%1\net40\bin
-    let BINDIR = env "FSCBinPath"
+    let! BINDIR = env "FSCBinPath"
 
-    let PROCESSOR_ARCHITECTURE = env "PROCESSOR_ARCHITECTURE" |> parseProcessorArchitecture
+    let! PROCESSOR_ARCHITECTURE = processor {
+        let! pa = env "PROCESSOR_ARCHITECTURE" 
+        return pa |> parseProcessorArchitecture }
 
     // if /i "%PROCESSOR_ARCHITECTURE%"=="x86" set X86_PROGRAMFILES=%ProgramFiles%
     // if /I "%PROCESSOR_ARCHITECTURE%"=="AMD64" set X86_PROGRAMFILES=%ProgramFiles(x86)%
     let! X86_PROGRAMFILES =
         match PROCESSOR_ARCHITECTURE with
-        | X86 -> Success (env "ProgramFiles")
-        | AMD64 -> Success (env "ProgramFiles(x86)")
-        | arc -> Failure (sprintf "unsupported PROCESSOR_ARCHITECTURE %O" arc)
+        | X86 -> env "ProgramFiles"
+        | AMD64 -> env "ProgramFiles(x86)"
+        | arc -> (fun () -> Failure (sprintf "unsupported PROCESSOR_ARCHITECTURE %O" arc))
 
-    let windir = env "windir"
+    let! windir = env "windir"
 
     // set GACUTIL="%X86_PROGRAMFILES%\Microsoft SDKs\Windows\v8.0A\bin\NETFX 4.0 Tools\gacutil.exe"
     let GACUTIL = X86_PROGRAMFILES/"Microsoft SDKs"/"Windows"/"v8.0A"/"bin"/"NETFX 4.0 Tools"/"gacutil.exe"

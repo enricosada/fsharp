@@ -7,38 +7,6 @@ open System.Collections.Generic
 open PlatformHelpers
 open Microsoft.Win32
 
-type RunError = GenericError of string | ProcessExecError of (int * string) | Skipped of string
-
-type TestConfig = {
-    EnvironmentVariables: Map<string,string>
-    ALINK: string;
-    CORDIR: string;
-    CORSDK: string;
-    CSC: string;
-    csc_flags: string;
-    FSC: string;
-    fsc_flags: string;
-    FSCBinPath: string;
-    FSCOREDLL20PATH: string;
-    FSCOREDLLPATH: string;
-    FSCOREDLLPORTABLEPATH: string;
-    FSCOREDLLNETCOREPATH: string;
-    FSCOREDLLNETCORE78PATH: string;
-    FSCOREDLLNETCORE259PATH: string;
-    FSDATATPPATH: string;
-    FSDIFF: string;
-    FSI: string;
-    fsi_flags: string;
-    GACUTIL: string;
-    ILDASM: string;
-    INSTALL_SKU: INSTALL_SKU option;
-    MSBUILDTOOLSPATH: string option;
-    NGEN: string;
-    PEVERIFY: string;
-    RESGEN: string;
-}
-and INSTALL_SKU = Clean | DesktopExpress | WebExpress | Ultimate
-
 let checkResult = 
     function 
     | CmdResult.ErrorLevel err -> let x = err, (sprintf "ERRORLEVEL %d" err) in Failure (RunError.ProcessExecError x)
@@ -247,7 +215,7 @@ let config envVars =
     then FSCBinPath <- SetFSCBinPath45 ()
 
     // if not exist "%FSCBinPath%\fsc.exe" echo %FSCBinPath%\fsc.exe still not found. Assume that user has added it to path somewhere
-    ignore "log"
+    ignore "smoke test check fsc.exe"
 
     // REM add %FSCBinPath% to path only if not already there. Otherwise, the path keeps growing.
     // echo %path%; | find /i "%FSCBinPath%;" > NUL
@@ -527,8 +495,8 @@ let config envVars =
     | None ->
         let msbuildToolsPath, installSku = attendedLog envVars X86_PROGRAMFILES !CORDIR CORDIR40
         { cfg with MSBUILDTOOLSPATH = msbuildToolsPath; INSTALL_SKU = (Some installSku) }
-
     
+
 
 let logConfig (cfg: TestConfig) =
     log "---------------------------------------------------------------"
@@ -561,5 +529,4 @@ let logConfig (cfg: TestConfig) =
     log "RESGEN              =%s" cfg.RESGEN
     log "---------------------------------------------------------------"
 
-type Permutation = FSI_FILE | FSI_STDIN | FSI_STDIN_OPT | FSI_STDIN_GUI | FSC_BASIC | FSC_BASIC_64 | FSC_HW | FSC_O3 | GENERATED_SIGNATURE | EMPTY_SIGNATURE | EMPTY_SIGNATURE_OPT | FSC_OPT_MINUS_DEBUG | FSC_OPT_PLUS_DEBUG | FRENCH | SPANISH | AS_DLL | WRAPPER_NAMESPACE | WRAPPER_NAMESPACE_OPT
 

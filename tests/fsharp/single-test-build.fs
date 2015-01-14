@@ -97,7 +97,7 @@ let singleTestBuild cfg testDir =
     let loglines = log "%s"
     let exec exe args =
         log "%s %s" exe args
-        exec' { RedirectOutput = Some loglines; RedirectError = Some loglines; RedirectInput = None; } testDir cfg.EnvironmentVariables exe args
+        Process.exec { RedirectOutput = Some loglines; RedirectError = Some loglines; RedirectInput = None; } testDir cfg.EnvironmentVariables exe args
 
     let echo_tofile = Commands.echo_tofile testDir
     let copy_y = Commands.copy_y testDir
@@ -108,22 +108,22 @@ let singleTestBuild cfg testDir =
     let ``echo._tofile`` = Commands.``echo._tofile`` testDir
 
     //:Ok
-    let doneOk () =
+    let doneOk x =
         //echo Built fsharp %~f0 ok.
         log "Built fsharp %s ok." testDir
         //echo. > build.ok
         ``echo._tofile`` " " "build.ok"
         //endlocal
         //exit /b 0
-        ()
+        Success x
 
     //:Skip
-    let doneSkipped () =
+    let doneSkipped x =
         //echo Skipped %~f0
         log "Skipped %s" testDir
         //endlocal
         //exit /b 0
-        ()
+        Success x
 
     //:Error
     let doneError err msg =
@@ -131,7 +131,7 @@ let singleTestBuild cfg testDir =
         log "%s" msg
         //endlocal
         //exit /b %ERRORLEVEL%
-        Failure (err) |> NUnitConf.checkTestResult
+        Failure (err)
 
     let genericErrorMessage = "Test Script Failed (perhaps test did not emit test.ok signal file?)"
 
@@ -405,7 +405,7 @@ let singleTestBuild cfg testDir =
         | WRAPPER_NAMESPACE -> doWrapperNamespace
         | WRAPPER_NAMESPACE_OPT -> doWrapperNamespaceOpt
 
-    let flow p =
+    let flow p () =
         build p () 
         |> Attempt.Run 
         |> function 

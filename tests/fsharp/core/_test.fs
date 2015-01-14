@@ -8,60 +8,101 @@ open TestConfig
 open SingleTestBuild
 open SingleTestRun
 open NUnitConf
+open PlatformHelpers
 
-let allPermutations = NUnitConf.allPermutation
+let setTestDataInfo name = FSharpTestSuite.setTestDataInfo ("core", name)
 
-let createTestCaseData name = NUnitConf.createTestCaseData ("core", name)
+type TestRunConfig = { Directory: string; Config: TestConfig }
+
+let testConfig () =
+    { Directory = NUnit.Framework.TestContext.CurrentContext.Test.Properties.["DIRECTORY"] :?> string;
+      Config = suiteHelpers.Value }
+
+let check (f: Attempt<_,_>) =
+    f |> Attempt.Run |> checkTestResult
 
 let test phases (p: Permutation) =
-    let dir = NUnit.Framework.TestContext.CurrentContext.Test.Properties.["DIRECTORY"] :?> string
-    let cfg = suiteHelpers.Value
+    let { Directory = dir; Config = cfg } = testConfig ()
     phases |> List.iter (fun phase -> phase cfg dir p)
 
 module Access =
-    let permutations = allPermutations |> createTestCaseData "access"
+    let permutations =
+        FSharpTestSuite.allPermutation
+        |> List.map (fun p -> (new TestCaseData (p)).SetCategory(sprintf "%A" p) |> setTestDataInfo "access")
 
     [<Test; TestCaseSource("permutations")>]
-    let access p = 
-        p |> test [singleTestBuild; singleTestRun]
+    let access p = check (processor {
+        let { Directory = dir; Config = cfg } = testConfig ()
+        
+        do! singleTestBuild cfg dir p
+        
+        do! singleTestRun cfg dir p
+        })
 
 module Apporder = 
-    let permutations = allPermutations |> createTestCaseData "apporder"
+    let permutations =
+        FSharpTestSuite.allPermutation
+        |> List.map (fun p -> (new TestCaseData (p)).SetCategory(sprintf "%A" p) |> setTestDataInfo "apporder")
 
     [<Test; TestCaseSource("permutations")>]
-    let apporder p = 
-        p |> test [singleTestBuild; singleTestRun]
+    let apporder p = check  (processor {
+        let { Directory = dir; Config = cfg } = testConfig ()
+        
+        do! singleTestBuild cfg dir p
+        
+        do! singleTestRun cfg dir p
+        })
 
 module Attributes = 
-    let permutations = allPermutations |> createTestCaseData "attributes"
+    let permutations =
+        FSharpTestSuite.allPermutation
+        |> List.map (fun p -> (new TestCaseData (p)).SetCategory(sprintf "%A" p) |> setTestDataInfo "attributes")
 
     [<Test; TestCaseSource("permutations")>]
-    let attributes p = 
-        p |> test [singleTestBuild; singleTestRun]
+    let attributes p = check  (processor {
+        let { Directory = dir; Config = cfg } = testConfig ()
+        
+        do! singleTestBuild cfg dir p
+        
+        do! singleTestRun cfg dir p
+        }) 
 
 module Comprehensions = 
-    let permutations = allPermutations |> createTestCaseData "comprehensions"
+    let permutations = 
+        FSharpTestSuite.allPermutation
+        |> List.map (fun p -> (new TestCaseData (p)).SetCategory(sprintf "%A" p) |> setTestDataInfo "comprehensions")
 
     [<Test; TestCaseSource("permutations")>]
-    let comprehensions p = 
-        p |> test [singleTestBuild; singleTestRun]
+    let comprehensions p = check  (processor {
+        let { Directory = dir; Config = cfg } = testConfig ()
+        
+        do! singleTestBuild cfg dir p
+        
+        do! singleTestRun cfg dir p
+        })
 
 module ControlWpf = 
-    let permutations = allPermutations |> createTestCaseData "controlwpf"
+    let permutations = 
+        FSharpTestSuite.allPermutation
+        |> List.map (fun p -> (new TestCaseData (p)).SetCategory(sprintf "%A" p) |> setTestDataInfo "controlwpf")
 
     [<Test; TestCaseSource("permutations")>]
-    let controlWpf p = 
-        p |> test [singleTestBuild; singleTestRun]
+    let controlWpf p = check  (processor {
+        let { Directory = dir; Config = cfg } = testConfig ()
+        
+        do! singleTestBuild cfg dir p
+        
+        do! singleTestRun cfg dir p
+        })
 
 module Events = 
-    let permutations = allPermutations |> createTestCaseData "events"
 
     open PlatformHelpers
 
-    let build cfg dir p = processor {
+    let build cfg dir = processor {
         let exec path args =
             log "%s %s" path args
-            exec' { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
+            Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
         let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
         let csc args = Commands.csc exec cfg.CSC args >> checkResult
@@ -79,10 +120,10 @@ module Events =
         do! peverify "testcs.exe"
         }
 
-    let run cfg dir p = processor {
+    let run cfg dir = processor {
         let exec path args = 
             log "%s %s" path args
-            exec' { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
+            Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
         let clix exe = exec exe >> checkResult
         let fsi args = Commands.fsi exec cfg.FSI args >> checkResult
 
@@ -102,8 +143,65 @@ module Events =
         do! clix (dir/"testcs.exe") ""
         }
 
-    [<Test; TestCaseSource("permutations")>]
-    let events p =
-        let checkFailure f c p = (f c p) >> Attempt.Run >> (fun x -> checkTestResult x)
-        p |> test [build |> checkFailure; run |> checkFailure]
+    let testData =
+        [ (new TestCaseData ()) |> setTestDataInfo "events" ]
 
+    [<Test; TestCaseSource("testData")>]
+    let events () = check  (processor {
+        let { Directory = dir; Config = cfg } = testConfig ()
+
+        do! build cfg dir
+        
+        do! run cfg dir
+        })
+
+
+module ``FSI-Shadowcopy`` = 
+
+    open PlatformHelpers
+
+    let execIn dir envVars input = 
+        Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = Some input; } dir envVars
+
+    let test1Data = 
+        // "%FSI%" %fsi_flags%                          < test1.fsx
+        // "%FSI%" %fsi_flags%  --shadowcopyreferences- < test1.fsx
+        [""; "--shadowcopyreferences-"] 
+        |> List.map (fun flags -> (new TestCaseData(flags)) |> setTestDataInfo "fsi-shadowcopy")
+
+    [<Test; TestCaseSource("test1Data")>]
+    let ``shadowcopy disabled`` (flags: string) = check  (processor {
+        let { Directory = dir; Config = cfg } = testConfig ()
+        let fsi args = Commands.fsiIn (execIn dir cfg.EnvironmentVariables) cfg.FSI args >> checkResult
+
+        // if exist test1.ok (del /f /q test1.ok)
+        use testOkFile = FileGuard.create (dir/"test1.ok")
+
+        do! fsi (sprintf "%s %s" cfg.fsi_flags flags) [dir/"test1.fsx"]
+
+        // if NOT EXIST test1.ok goto SetError
+        do! testOkFile |> NUnitConf.checkGuardExists
+        })
+
+    let test2Data = 
+        // "%FSI%" %fsi_flags%  /shadowcopyreferences+  < test2.fsx
+        // "%FSI%" %fsi_flags%  --shadowcopyreferences  < test2.fsx
+        ["/shadowcopyreferences+"; "--shadowcopyreferences"] 
+        |> List.map (fun flags -> (new TestCaseData(flags)) |> setTestDataInfo "fsi-shadowcopy")
+
+    [<Test; TestCaseSource("test2Data")>]
+    let ``shadowcopy enabled`` (flags: string) = check (processor {
+        let { Directory = dir; Config = cfg } = testConfig ()
+        let fsi args = Commands.fsiIn (execIn dir cfg.EnvironmentVariables) cfg.FSI args >> checkResult
+
+        // if exist test2.ok (del /f /q test2.ok)
+        use testOkFile = FileGuard.create (dir/"test2.ok")
+
+        // "%FSI%" %fsi_flags%  /shadowcopyreferences+  < test2.fsx
+        do! fsi (sprintf "%s %s" cfg.fsi_flags flags) [dir/"test2.fsx"]
+
+        // if NOT EXIST test2.ok goto SetError
+        do! testOkFile |> NUnitConf.checkGuardExists
+        })
+
+    

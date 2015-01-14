@@ -42,6 +42,7 @@
   <ItemGroup>
     <Compile Include="PlatformHelpers.fs" />
     <Compile Include="Commands.fs" />
+    <Compile Include="FSharpTestSuiteTypes.fs" />
     <Compile Include="..\config.fs">
       <Link>config.fs</Link>
     </Compile>
@@ -63,6 +64,10 @@
     <None Include="core\controlWpf\test.fsx" />
     <None Include="core\events\test.fs" />
     <None Include="core\events\testcs.cs" />
+    <!-- core\fsi-shadowcopy -->
+    <None Include="core\fsi-shadowcopy\Library1.fs" />
+    <None Include="core\fsi-shadowcopy\test1.fsx" />
+    <None Include="core\fsi-shadowcopy\test2.fsx" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="nunit.framework, Version=2.6.3.13283, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77">
