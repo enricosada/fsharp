@@ -173,12 +173,12 @@ module ``FSI-Shadowcopy`` =
     [<Test; TestCaseSource("test1Data")>]
     let ``shadowcopy disabled`` (flags: string) = check  (processor {
         let { Directory = dir; Config = cfg } = testConfig ()
-        let fsi args = Commands.fsiIn (execIn dir cfg.EnvironmentVariables) cfg.FSI args >> checkResult
+        let fsiIn args = Commands.fsiIn (execIn dir cfg.EnvironmentVariables) cfg.FSI args >> checkResult
 
         // if exist test1.ok (del /f /q test1.ok)
         use testOkFile = FileGuard.create (dir/"test1.ok")
 
-        do! fsi (sprintf "%s %s" cfg.fsi_flags flags) [dir/"test1.fsx"]
+        do! fsiIn (sprintf "%s %s" cfg.fsi_flags flags) [dir/"test1.fsx"]
 
         // if NOT EXIST test1.ok goto SetError
         do! testOkFile |> NUnitConf.checkGuardExists
@@ -193,13 +193,13 @@ module ``FSI-Shadowcopy`` =
     [<Test; TestCaseSource("test2Data")>]
     let ``shadowcopy enabled`` (flags: string) = check (processor {
         let { Directory = dir; Config = cfg } = testConfig ()
-        let fsi args = Commands.fsiIn (execIn dir cfg.EnvironmentVariables) cfg.FSI args >> checkResult
+        let fsiIn args = Commands.fsiIn (execIn dir cfg.EnvironmentVariables) cfg.FSI args >> checkResult
 
         // if exist test2.ok (del /f /q test2.ok)
         use testOkFile = FileGuard.create (dir/"test2.ok")
 
         // "%FSI%" %fsi_flags%  /shadowcopyreferences+  < test2.fsx
-        do! fsi (sprintf "%s %s" cfg.fsi_flags flags) [dir/"test2.fsx"]
+        do! fsiIn (sprintf "%s %s" cfg.fsi_flags flags) [dir/"test2.fsx"]
 
         // if NOT EXIST test2.ok goto SetError
         do! testOkFile |> NUnitConf.checkGuardExists
