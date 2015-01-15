@@ -12,3 +12,4 @@ negativetest.fsx(52,9,52,17): typecheck error FS3086: A custom operation may not
 negativetest.fsx(60,15,60,23): typecheck error FS3086: A custom operation may not be used in conjunction with 'use', 'try/with', 'try/finally', 'if/then/else' or 'match' operators within this computation expression
 
 negativetest.fsx(66,6,66,14): typecheck error FS3086: A custom operation may not be used in conjunction with 'use', 'try/with', 'try/finally', 'if/then/else' or 'match' operators within this computation expression
+

@@ -32,6 +32,10 @@ type CmdArguments = {
     RedirectInput: (StreamWriter -> unit) option;
 }
 
+//type CmdSpec =
+//    | ShellCommand of string
+//    | RawCommand of FilePath * string
+
 module Process =
 
     open System.Diagnostics

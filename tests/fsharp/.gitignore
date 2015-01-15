@@ -10,3 +10,6 @@ lib*.xml
 
 core/forwarders/orig
 core/forwarders/split
+
+core/queriesCustomQueryOps/negativetest.err
+core/queriesCustomQueryOps/negativetest.vserr

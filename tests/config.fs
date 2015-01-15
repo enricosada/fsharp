@@ -223,7 +223,7 @@ let config envVars =
 
 
     // if "%FSDIFF%"=="" set FSDIFF=%SCRIPT_ROOT%fsharpqa\testenv\bin\%processor_architecture%\diff.exe -dew
-    let FSDIFF = envOrDefault "FSDIFF" (SCRIPT_ROOT/"fsharpqa"/"testenv"/"bin"/(PROCESSOR_ARCHITECTURE.ToString())/"diff.exe -dew")
+    let FSDIFF = envOrDefault "FSDIFF" (SCRIPT_ROOT/"fsharpqa"/"testenv"/"bin"/(PROCESSOR_ARCHITECTURE.ToString())/"diff.exe")
 
     // rem check if we're already configured, if not use the configuration from the last line of the config file
     // if "%fsc%"=="" ( 

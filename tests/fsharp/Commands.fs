@@ -118,3 +118,20 @@ let where envVars cmd =
     match Process.exec cmdArgs (Path.GetTempPath()) envVars "cmd.exe" (sprintf "/c where %s" cmd) with
     | ErrorLevel _ -> None
     | CmdResult.Success -> !result    
+
+let fsdiff exec fsdiffExe file1 file2 =
+    // %FSDIFF% %testname%.err %testname%.bsl
+    exec fsdiffExe (sprintf "-dew %s %s" file1 file2)
+
+let ``for /f`` path = 
+    // FOR /F processing of a text file consists of reading the file, one line of text at a time and then breaking the line up into individual
+    // items of data called 'tokens'. The DO command is then executed with the parameter(s) set to the token(s) found.
+    // By default, /F breaks up the line at each blank space " ", and any blank lines are skipped, this default parsing behavior can be changed 
+    // by applying one or more of the "options" parameters. The option(s) must be contained within "a pair of quotes"
+    let splitLines lines =
+        lines
+        |> Array.filter (fun l -> not <| String.IsNullOrWhiteSpace(l))
+        |> Array.collect (fun l -> l.Split([| ' ' |], StringSplitOptions.RemoveEmptyEntries))
+        |> List.ofArray
+
+    File.ReadAllLines (path) |> splitLines
