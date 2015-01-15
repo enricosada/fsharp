@@ -40,9 +40,18 @@ module Process =
 
     open System.Diagnostics
 
+    let processExePath baseDir exe =
+        if Path.IsPathRooted(exe) then exe
+        else 
+            match Path.GetDirectoryName(exe) with
+            | "" -> exe
+            | _ -> Path.Combine(baseDir,exe) |> Path.GetFullPath
+
     let exec cmdArgs (workDir: FilePath) envs (path: FilePath) arguments =
+
         //TODO gestione errore
-        let processInfo = new ProcessStartInfo(path, arguments)
+        let exePath = path |> processExePath workDir
+        let processInfo = new ProcessStartInfo(exePath, arguments)
         processInfo.CreateNoWindow <- true
         processInfo.UseShellExecute <- false
         processInfo.WorkingDirectory <- workDir

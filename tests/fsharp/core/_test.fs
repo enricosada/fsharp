@@ -141,7 +141,7 @@ module Events =
         do! testOkFile |> NUnitConf.checkGuardExists
 
         // %CLIX% .\testcs.exe
-        do! clix (dir/"testcs.exe") ""
+        do! clix ("."/"testcs.exe") ""
         }
 
     let testData =
@@ -321,10 +321,10 @@ module FsFromCs =
         let clix exe = exec exe >> checkResult
 
         // %CLIX% .\test.exe
-        do! clix (dir/"test.exe") ""
+        do! clix ("."/"test.exe") ""
 
         // %CLIX% .\test--optimize.exe
-        do! clix (dir/"test--optimize.exe") ""
+        do! clix ("."/"test--optimize.exe") ""
 
         }
 
@@ -373,7 +373,7 @@ module QueriesCustomQueryOps =
         let exec path args =
             log "%s %s" path args
             Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
-        let clix exe = exec (dir/exe) >> checkResult
+        let clix exe = exec exe >> checkResult
         let fsi args = Commands.fsi exec cfg.FSI args >> checkResult
 
         // echo TestC
@@ -396,7 +396,7 @@ module QueriesCustomQueryOps =
             use testOkFile = FileGuard.create (dir/"test.ok")
 
             // %CLIX% test.exe
-            do! clix "test.exe" ""
+            do! clix ("."/"test.exe") ""
 
             // if NOT EXIST test.ok goto SetError
             do! testOkFile |> NUnitConf.checkGuardExists
@@ -407,7 +407,7 @@ module QueriesCustomQueryOps =
             use testOkFile = FileGuard.create (dir/"test.ok")
 
             // %CLIX% test--optimize.exe
-            do! clix "test--optimize.exe" ""
+            do! clix ("."/"test--optimize.exe") ""
 
             // if NOT EXIST test.ok goto SetError
             do! testOkFile |> NUnitConf.checkGuardExists

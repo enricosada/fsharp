@@ -13,3 +13,5 @@ core/forwarders/split
 
 core/queriesCustomQueryOps/negativetest.err
 core/queriesCustomQueryOps/negativetest.vserr
+
+Library1.dll

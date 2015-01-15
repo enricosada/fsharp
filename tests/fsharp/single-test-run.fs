@@ -90,7 +90,7 @@ let private singleTestRun' cfg testDir =
     let execIn input exe args = 
         Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = Some input; } testDir cfg.EnvironmentVariables exe args
 
-    let clix exe = exec (testDir/exe) >> checkResult
+    let clix exe = exec exe >> checkResult
     let fsi args = Commands.fsi exec cfg.FSI args >> checkResult
     let fsiIn flags sources =
         log "%s %s < %s" cfg.FSI flags (sources |> Seq.ofList |> String.concat " ")
@@ -195,7 +195,7 @@ let private singleTestRun' cfg testDir =
         // if exist test.ok (del /f /q test.ok)
         use testOkFile = createTestOkFile () 
         // %CLIX% .\test.exe && (
-        do! clix "test.exe" ""
+        do! clix ("."/"test.exe") ""
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :FSC_BASIC failed
         // set ERRORMSG=%ERRORMSG% FSC_BASIC failed;
@@ -209,7 +209,7 @@ let private singleTestRun' cfg testDir =
         // if exist test.ok (del /f /q test.ok)
         use testOkFile = createTestOkFile () 
         // %CLIX% .\testX64.exe && (
-        do! clix "testX64.exe" ""
+        do! clix ("."/"testX64.exe") ""
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :FSC_BASIC_64 failed
         // set ERRORMSG=%ERRORMSG% FSC_BASIC_64 failed;
@@ -227,7 +227,7 @@ let private singleTestRun' cfg testDir =
                 // if exist test.ok (del /f /q test.ok)
                 use testOkFile = createTestOkFile () 
                 // %CLIX% .\test-hw.exe && (
-                do! clix "test-hw.exe" ""
+                do! clix ("."/"test-hw.exe") ""
                 // dir test.ok > NUL 2>&1 ) || (
                 // @echo  :FSC_HW failed
                 // set ERRORMSG=%ERRORMSG% FSC_HW failed;
@@ -243,7 +243,7 @@ let private singleTestRun' cfg testDir =
         // if exist test.ok (del /f /q test.ok)
         use testOkFile = createTestOkFile () 
         // %CLIX% .\test--optimize.exe && (
-        do! clix "test--optimize.exe" ""
+        do! clix ("."/"test--optimize.exe") ""
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :FSC_O3 failed
         // set ERRORMSG=%ERRORMSG% FSC_03 failed;
@@ -257,7 +257,7 @@ let private singleTestRun' cfg testDir =
         // if exist test.ok (del /f /q test.ok)
         use testOkFile = createTestOkFile () 
         // %CLIX% .\test--optminus--debug.exe && (
-        do! clix "test--optminus--debug.exe" ""
+        do! clix ("."/"test--optminus--debug.exe") ""
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :FSC_OPT_MINUS_DEBUG failed
         // set ERRORMSG=%ERRORMSG% FSC_OPT_MINUS_DEBUG failed;
@@ -271,7 +271,7 @@ let private singleTestRun' cfg testDir =
         // if exist test.ok (del /f /q test.ok)
         use testOkFile = createTestOkFile () 
         // %CLIX% .\test--optplus--debug.exe && (
-        do! clix "test--optplus--debug.exe" ""
+        do! clix ("."/"test--optplus--debug.exe") ""
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :FSC_OPT_PLUS_DEBUG failed
         // set ERRORMSG=%ERRORMSG% FSC_OPT_PLUS_DEBUG failed;
@@ -291,7 +291,7 @@ let private singleTestRun' cfg testDir =
         // if exist test.ok (del /f /q test.ok)
         use testOkFile = createTestOkFile () 
         // %CLIX% tmptest1.exe && (
-        do! clix "tmptest1.exe" ""
+        do! clix ("."/"tmptest1.exe") ""
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :GENERATED_SIGNATURE failed
         // set ERRORMSG=%ERRORMSG% FSC_GENERATED_SIGNATURE failed;
@@ -313,7 +313,7 @@ let private singleTestRun' cfg testDir =
         // if exist test.ok (del /f /q test.ok)
         use testOkFile = createTestOkFile () 
         // %CLIX% tmptest2.exe && (
-        do! clix "tmptest2.exe" ""
+        do! clix ("."/"tmptest2.exe") ""
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :EMPTY_SIGNATURE failed
         // set ERRORMSG=%ERRORMSG% FSC_EMPTY_SIGNATURE failed;
@@ -335,7 +335,7 @@ let private singleTestRun' cfg testDir =
         // if exist test.ok (del /f /q test.ok)
         use testOkFile = createTestOkFile () 
         // %CLIX% tmptest2--optimize.exe && (
-        do! clix "tmptest2--optimize.exe" ""
+        do! clix ("."/"tmptest2--optimize.exe") ""
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :EMPTY_SIGNATURE_OPT --optimize failed
         // set ERRORMSG=%ERRORMSG% EMPTY_SIGNATURE_OPT --optimize failed;
@@ -351,7 +351,7 @@ let private singleTestRun' cfg testDir =
         // if exist test.ok (del /f /q test.ok)
         use testOkFile = createTestOkFile () 
         // %CLIX% .\test.exe fr-FR && (
-        do! clix "test.exe" "fr-FR"
+        do! clix ("."/"test.exe") "fr-FR"
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :FRENCH failed
         // set ERRORMSG=%ERRORMSG% FRENCH failed;
@@ -365,7 +365,7 @@ let private singleTestRun' cfg testDir =
         // if exist test.ok (del /f /q test.ok)
         use testOkFile = createTestOkFile () 
         // %CLIX% .\test.exe es-ES && (
-        do! clix "test.exe" "es-ES"
+        do! clix ("."/"test.exe") "es-ES"
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :SPANISH failed
         // set ERRORMSG=%ERRORMSG% SPANISH failed;
@@ -382,7 +382,7 @@ let private singleTestRun' cfg testDir =
         // if exist test.ok (del /f /q test.ok)
         use testOkFile = createTestOkFile () 
         // %CLIX% .\test--optimize-client-of-lib.exe && (
-        do! clix "test--optimize-client-of-lib.exe" ""
+        do! clix ("."/"test--optimize-client-of-lib.exe") ""
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :AS_DLL failed
         // set ERRORMSG=%ERRORMSG% AS_DLL failed;
@@ -403,7 +403,7 @@ let private singleTestRun' cfg testDir =
         // if exist test.ok (del /f /q test.ok)
         use testOkFile = createTestOkFile () 
         // %CLIX% .\tmptest3.exe && (
-        do! clix "tmptest3.exe" ""
+        do! clix ("."/"tmptest3.exe") ""
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :WRAPPER_NAMESPACE failed
         // set ERRORMSG=%ERRORMSG% WRAPPER_NAMESPACE failed;
@@ -425,7 +425,7 @@ let private singleTestRun' cfg testDir =
         // if exist test.ok (del /f /q test.ok)
         use testOkFile = createTestOkFile () 
         // %CLIX% .\tmptest3--optimize.exe && (
-        do! clix "tmptest3--optimize.exe" ""
+        do! clix ("."/"tmptest3--optimize.exe") ""
         // dir test.ok > NUL 2>&1 ) || (
         // @echo :WRAPPER_NAMESPACE_OPT failed
         // set ERRORMSG=%ERRORMSG% WRAPPER_NAMESPACE_OPT failed;
