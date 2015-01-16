@@ -78,6 +78,17 @@
     <None Include="core\queriesCustomQueryOps\negativetest.bsl" />
     <None Include="core\queriesCustomQueryOps\negativetest.fsx" />
     <None Include="core\queriesCustomQueryOps\test.fsx" />
+    <None Include="core\printing\preludePrintSize1000.fsx" />
+    <None Include="core\printing\preludePrintSize200.fsx" />
+    <None Include="core\printing\preludeShowDeclarationValuesFalse.fsx" />
+    <None Include="core\printing\test.fsx" />
+    <None Include="core\printing\testLoadFile.fsx" />
+    <None Include="core\printing\testLoadFile2.fsx" />
+    <None Include="core\printing\z.output.test.1000.bsl" />
+    <None Include="core\printing\z.output.test.200.bsl" />
+    <None Include="core\printing\z.output.test.default.bsl" />
+    <None Include="core\printing\z.output.test.off.bsl" />
+    <None Include="core\printing\z.output.test.quiet.bsl" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="nunit.framework, Version=2.6.3.13283, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77">

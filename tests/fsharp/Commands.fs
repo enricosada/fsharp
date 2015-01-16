@@ -11,10 +11,14 @@ let getfullpath workDir path =
         else Path.Combine(workDir, path)
     rooted |> Path.GetFullPath
 
+//TODO check file exists es in copy
+//TODO spostare il log fuori dalle function?
+
 /// copy /y %source1% tmptest2.ml
 let copy_y workDir source to' = 
     log "copy /y %s %s" source to'
     File.Copy( source |> getfullpath workDir, to' |> getfullpath workDir, true)
+    CmdResult.Success
 
 /// mkdir orig
 let mkdir_p workDir dir =
@@ -119,9 +123,9 @@ let where envVars cmd =
     | ErrorLevel _ -> None
     | CmdResult.Success -> !result    
 
-let fsdiff exec fsdiffExe file1 file2 =
+let fsdiff exec fsdiffExe ignoreWhiteSpaceChanges file1 file2 =
     // %FSDIFF% %testname%.err %testname%.bsl
-    exec fsdiffExe (sprintf "-dew %s %s" file1 file2)
+    exec fsdiffExe (sprintf "%s%s %s" (if ignoreWhiteSpaceChanges then "-dew " else "") file1 file2)
 
 let ``for /f`` path = 
     // FOR /F processing of a text file consists of reading the file, one line of text at a time and then breaking the line up into individual
@@ -135,3 +139,4 @@ let ``for /f`` path =
         |> List.ofArray
 
     File.ReadAllLines (path) |> splitLines
+    

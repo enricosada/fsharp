@@ -31,7 +31,7 @@ let internal singleNegTest' (cfg: TestConfig) workDir testname = processor {
     let clix exe = exec exe >> checkResult
     let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
     let fsc_flags = cfg.fsc_flags
-    let fsdiff a = Commands.fsdiff exec cfg.FSDIFF a >> checkResult
+    let fsdiff a = Commands.fsdiff exec cfg.FSDIFF true a >> checkResult
     let envOrFail key =
         cfg.EnvironmentVariables 
         |> Map.tryFind key 
@@ -121,7 +121,7 @@ let internal singleNegTest' (cfg: TestConfig) workDir testname = processor {
             let redirectOutputToFile path args =
                 log "%s %s" path args
                 Process.exec { RedirectOutput = Some (function null -> () | s -> out.Add(s)); RedirectError = Some (log "%s"); RedirectInput = None; } workDir cfg.EnvironmentVariables path args
-            do! (Commands.fsdiff redirectOutputToFile cfg.FSDIFF a b) |> checkResult
+            do! (Commands.fsdiff redirectOutputToFile cfg.FSDIFF true a b) |> checkResult
             return out.ToArray() |> List.ofArray
             }
 

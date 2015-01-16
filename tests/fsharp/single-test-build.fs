@@ -100,7 +100,7 @@ let singleTestBuild cfg testDir =
         Process.exec { RedirectOutput = Some loglines; RedirectError = Some loglines; RedirectInput = None; } testDir cfg.EnvironmentVariables exe args
 
     let echo_tofile = Commands.echo_tofile testDir
-    let copy_y = Commands.copy_y testDir
+    let copy_y f = Commands.copy_y testDir f >> checkResult
     let type_append_tofile = Commands.type_append_tofile testDir
     let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
     let fsc_flags = cfg.fsc_flags
@@ -214,7 +214,7 @@ let singleTestBuild cfg testDir =
                 //  echo Generating interface file...
                 log "Generating interface file..."
                 //  copy /y %source1% tmptest.ml
-                source1 |> Option.iter (fun from -> copy_y from "tmptest.ml")
+                do! source1 |> Option.map (fun from -> copy_y from "tmptest.ml")
                 //  REM NOTE: use --generate-interface-file since results may be in Unicode
                 //  "%FSC%" %fsc_flags% --sig:tmptest.mli tmptest.ml
                 //  if ERRORLEVEL 1 goto Error
@@ -245,7 +245,7 @@ let singleTestBuild cfg testDir =
                 // echo // empty file  > tmptest2.mli
                 echo_tofile "// empty file  " "tmptest2.mli"
                 // copy /y %source1% tmptest2.ml
-                source1 |> Option.iter (fun from -> copy_y from "tmptest2.ml")
+                do! source1 |> Option.map (fun from -> copy_y from "tmptest2.ml")
                 // "%FSC%" %fsc_flags% --define:COMPILING_WITH_EMPTY_SIGNATURE -o:tmptest2.exe tmptest2.mli tmptest2.ml
                 // if ERRORLEVEL 1 goto Error
                 do! fsc (sprintf "%s --define:COMPILING_WITH_EMPTY_SIGNATURE -o:tmptest2.exe" fsc_flags) ["tmptest2.mli";"tmptest2.ml"]
@@ -270,7 +270,7 @@ let singleTestBuild cfg testDir =
                 // echo // empty file  > tmptest2.mli
                 echo_tofile "// empty file  " "tmptest2.mli"
                 // copy /y %source1% tmptest2.ml
-                source1 |> Option.iter (fun from -> copy_y from "tmptest2.ml")
+                do! source1 |> Option.map (fun from -> copy_y from "tmptest2.ml")
                 // "%FSC%" %fsc_flags% --define:COMPILING_WITH_EMPTY_SIGNATURE --optimize -o:tmptest2--optimize.exe tmptest2.mli tmptest2.ml
                 // if ERRORLEVEL 1 goto Error
                 do! fsc (sprintf "%s --define:COMPILING_WITH_EMPTY_SIGNATURE --optimize -o:tmptest2--optimize.exe" fsc_flags) ["tmptest2.mli";"tmptest2.ml"]

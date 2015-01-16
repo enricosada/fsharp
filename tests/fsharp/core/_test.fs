@@ -221,7 +221,7 @@ module Forwarders =
         let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
         let csc args = Commands.csc exec cfg.CSC args >> checkResult
-        let copy_y = Commands.copy_y dir
+        let copy_y f = Commands.copy_y dir f >> checkResult
         let mkdir = Commands.mkdir_p dir
 
         // mkdir orig
@@ -245,9 +245,9 @@ module Forwarders =
         do! csc """/nologo  /target:library /r:split\a-part1.dll /out:split\a.dll /define:PART2;SPLIT""" ["a.cs"]
 
         // copy /y orig\b.dll split\b.dll
-        copy_y ("orig"/"b.dll") ("split"/"b.dll")
+        do! copy_y ("orig"/"b.dll") ("split"/"b.dll")
         // copy /y orig\c.dll split\c.dll
-        copy_y ("orig"/"c.dll") ("split"/"c.dll")
+        do! copy_y ("orig"/"c.dll") ("split"/"c.dll")
 
         // "%FSC%" -o:orig\test.exe -r:orig\b.dll -r:orig\a.dll test.fs
         do! fsc """-o:orig\test.exe -r:orig\b.dll -r:orig\a.dll""" ["test.fs"]
@@ -424,4 +424,132 @@ module QueriesCustomQueryOps =
 
         do! run cfg dir
                 
+        })
+
+module Printing = 
+
+    let testData = 
+        // "%FSI%" %fsc_flags_errors_ok%  --nologo --use:preludePrintSize200.fsx      <test.fsx >z.raw.output.test.200.txt     2>&1 
+        // findstr /v "%CD%" z.raw.output.test.200.txt     | findstr /v -C:"--help' for options" > z.output.test.200.txt
+        // if NOT EXIST z.output.test.200.bsl     COPY z.output.test.200.txt     z.output.test.200.bsl
+        // %PRDIFF% z.output.test.200.txt     z.output.test.200.bsl     > z.output.test.200.diff
+        [ "", "z.output.test.default.txt", "z.output.test.default.bsl" ;
+          "--use:preludePrintSize1000.fsx", "z.output.test.1000.txt", "z.output.test.1000.bsl" ;
+          "--use:preludePrintSize200.fsx", "z.output.test.200.txt", "z.output.test.200.bsl" ;
+          "--use:preludeShowDeclarationValuesFalse.fsx", "z.output.test.off.txt", "z.output.test.off.bsl" ;
+          "--quiet", "z.output.test.quiet.txt", "z.output.test.quiet.bsl" ]
+        |> List.map (fun (flag,diff,expected) -> (new TestCaseData(flag, diff, expected)) |> setTestDataInfo "printing" )
+
+    [<Test; TestCaseSource("testData")>]
+    let printing flag diffFile expectedFile = check (processor {
+        let { Directory = dir; Config = cfg } = testConfig ()
+
+        let exec path args =
+            log "%s %s" path args
+            Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
+        let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
+        let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
+        let csc args = Commands.csc exec cfg.CSC args >> checkResult
+        let copy from' = Commands.copy_y dir from' >> checkResult
+
+        let redirectToFile path =
+            File.WriteAllText(path, "")
+            MailboxProcessor.Start(fun inbox -> 
+                let rec loop () = async { 
+                    let! msg = inbox.Receive ()
+                    File.AppendAllLines (path, [| msg |])
+                    return! loop () }
+                loop ())
+
+        let fsiInAndRedirectOutErr flags inputFile outErrRedirectedTo =
+            use outFile = redirectToFile outErrRedirectedTo
+            let exec' input path args =
+                log "%s %s <%s >%s 2>&1" path args inputFile outErrRedirectedTo
+                let appendToFile l = outFile.Post (l)
+                Process.exec { RedirectOutput = Some appendToFile; RedirectError = Some appendToFile; RedirectInput = Some input; } dir cfg.EnvironmentVariables path args
+            // "%FSI%" %fsc_flags_errors_ok%  --nologo                                    <test.fsx >z.raw.output.test.default.txt 2>&1
+            Commands.fsiIn exec' cfg.FSI flags [ inputFile ] |> checkResult
+        
+        // rem recall  >fred.txt 2>&1 merges stderr into the stdout redirect
+        // rem however 2>&1  >fred.txt did not seem to do it.
+
+        // REM Here we use diff.exe without -dew option to trap whitespace changes, like bug 4429.
+        // REM Any whitespace change needs to be investigated, these tests are to check exact output.
+        // REM Base line updates are easy: sd edit and delete the .bsl and rerun the test.
+        // set PRDIFF=%~d0%~p0..\..\..\fsharpqa\testenv\bin\%processor_architecture%\diff.exe
+        // echo Diff tool is %PRDIFF%
+        // if NOT EXIST %PRDIFF% (
+        //     echo ERROR: Diff tool not found at %PRDIFF%
+        //     exit /b 1
+        // )
+        let prdiff a = Commands.fsdiff exec cfg.FSDIFF false a >> checkResult
+
+        let fsc_flags_errors_ok = ""
+
+        // echo == Plain
+        // "%FSI%" %fsc_flags_errors_ok%  --nologo                                    <test.fsx >z.raw.output.test.default.txt 2>&1
+        // echo == PrintSize 1000
+        // "%FSI%" %fsc_flags_errors_ok%  --nologo --use:preludePrintSize1000.fsx     <test.fsx >z.raw.output.test.1000.txt    2>&1 
+        // echo == PrintSize 200
+        // "%FSI%" %fsc_flags_errors_ok%  --nologo --use:preludePrintSize200.fsx      <test.fsx >z.raw.output.test.200.txt     2>&1 
+        // echo == ShowDeclarationValues off
+        // "%FSI%" %fsc_flags_errors_ok%  --nologo --use:preludeShowDeclarationValuesFalse.fsx <test.fsx >z.raw.output.test.off.txt     2>&1
+        // echo == Quiet
+        // "%FSI%" %fsc_flags_errors_ok% --nologo --quiet                              <test.fsx >z.raw.output.test.quiet.txt   2>&1
+        let rawFile = Path.GetTempFileName()
+        do! fsiInAndRedirectOutErr (sprintf "%s --nologo %s" fsc_flags_errors_ok flag) (dir/"test.fsx") rawFile
+
+        // REM REVIEW: want to normalise CWD paths, not suppress them.
+        let ``findstr /v`` text = Seq.filter (fun (s: string) -> not <| s.Contains(text))
+        let removeCDandHelp from' to' =
+            File.ReadLines from' |> (``findstr /v`` dir) |> (``findstr /v`` "--help' for options") |> (fun lines -> File.WriteAllLines(dir/to', lines))
+
+        // findstr /v "%CD%" z.raw.output.test.default.txt | findstr /v -C:"--help' for options" > z.output.test.default.txt
+        // findstr /v "%CD%" z.raw.output.test.1000.txt    | findstr /v -C:"--help' for options" > z.output.test.1000.txt
+        // findstr /v "%CD%" z.raw.output.test.200.txt     | findstr /v -C:"--help' for options" > z.output.test.200.txt
+        // findstr /v "%CD%" z.raw.output.test.off.txt     | findstr /v -C:"--help' for options" > z.output.test.off.txt
+        // findstr /v "%CD%" z.raw.output.test.quiet.txt   | findstr /v -C:"--help' for options" > z.output.test.quiet.txt
+        removeCDandHelp rawFile diffFile
+
+        let withDefault default' to' =
+            fileExists (dir/to') |> function None -> Some (copy default' to') | Some _ -> None
+        // if NOT EXIST z.output.test.default.bsl COPY z.output.test.default.txt z.output.test.default.bsl
+        // if NOT EXIST z.output.test.off.bsl     COPY z.output.test.off.txt     z.output.test.off.bsl
+        // if NOT EXIST z.output.test.1000.bsl    COPY z.output.test.1000.txt    z.output.test.1000.bsl
+        // if NOT EXIST z.output.test.200.bsl     COPY z.output.test.200.txt     z.output.test.200.bsl
+        // if NOT EXIST z.output.test.quiet.bsl   COPY z.output.test.quiet.txt   z.output.test.quiet.bsl
+        do! expectedFile |> withDefault diffFile
+
+        // %PRDIFF% z.output.test.default.txt z.output.test.default.bsl > z.output.test.default.diff
+        // %PRDIFF% z.output.test.off.txt     z.output.test.off.bsl     > z.output.test.off.diff
+        // %PRDIFF% z.output.test.1000.txt    z.output.test.1000.bsl    > z.output.test.1000.diff
+        // %PRDIFF% z.output.test.200.txt     z.output.test.200.bsl     > z.output.test.200.diff
+        // %PRDIFF% z.output.test.quiet.txt   z.output.test.quiet.bsl   > z.output.test.quiet.diff
+        do! prdiff diffFile expectedFile
+
+        // echo ======== Differences From ========
+        // TYPE  z.output.test.default.diff
+        // TYPE  z.output.test.off.diff
+        // TYPE  z.output.test.1000.diff
+        // TYPE  z.output.test.200.diff
+        // TYPE  z.output.test.quiet.diff
+        // echo ========= Differences To =========
+        // 
+        // TYPE  z.output.test.default.diff  > zz.alldiffs
+        // TYPE  z.output.test.off.diff     >> zz.alldiffs
+        // TYPE  z.output.test.1000.diff    >> zz.alldiffs
+        // TYPE  z.output.test.200.diff     >> zz.alldiffs
+        // TYPE  z.output.test.quiet.diff   >> zz.alldiffs
+        // 
+        // for /f %%c IN (zz.alldiffs) do (
+        //   echo NOTE -------------------------------------
+        //   echo NOTE ---------- THERE ARE DIFFs ----------
+        //   echo NOTE -------------------------------------
+        //   echo .
+        //   echo To update baselines: "sd edit *bsl", "del *bsl", "build.bat" regenerates bsl, "sd diff ...", check what changed.
+        //   goto Error
+        // )
+        ignore "printed to log"
+
+
         })
