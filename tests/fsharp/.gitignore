@@ -18,4 +18,5 @@ Library1.dll
 
 core/printing/z.output.test.*.txt
 core/printing/z.raw.output.test.*.txt
+core/printing/z.output.test.*.diff
 

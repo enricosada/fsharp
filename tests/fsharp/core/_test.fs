@@ -452,23 +452,27 @@ module Printing =
         let csc args = Commands.csc exec cfg.CSC args >> checkResult
         let copy from' = Commands.copy_y dir from' >> checkResult
 
-        let redirectToFile path =
-            File.WriteAllText(path, "")
+        let redirectToFile (writer: StreamWriter) =
             MailboxProcessor.Start(fun inbox -> 
-                let rec loop () = async { 
-                    let! msg = inbox.Receive ()
-                    File.AppendAllLines (path, [| msg |])
+                let rec loop () = async {
+                    let! (msg : string) = inbox.Receive ()
+                    do! writer.WriteLineAsync(msg) |> (Async.AwaitIAsyncResult >> Async.Ignore)
                     return! loop () }
                 loop ())
 
+        let waitCompletion (mailbox: MailboxProcessor<_>) =
+            while mailbox.CurrentQueueLength > 0 do System.Threading.Thread.Sleep(TimeSpan.FromMilliseconds(100.0))
+
         let fsiInAndRedirectOutErr flags inputFile outErrRedirectedTo =
-            use outFile = redirectToFile outErrRedirectedTo
+            use writer = new StreamWriter(outErrRedirectedTo, false)
+            let outFile = redirectToFile writer
             let exec' input path args =
                 log "%s %s <%s >%s 2>&1" path args inputFile outErrRedirectedTo
                 let appendToFile l = outFile.Post (l)
                 Process.exec { RedirectOutput = Some appendToFile; RedirectError = Some appendToFile; RedirectInput = Some input; } dir cfg.EnvironmentVariables path args
             // "%FSI%" %fsc_flags_errors_ok%  --nologo                                    <test.fsx >z.raw.output.test.default.txt 2>&1
             Commands.fsiIn exec' cfg.FSI flags [ inputFile ] |> checkResult
+            |> (fun x -> outFile |> waitCompletion; x)
         
         // rem recall  >fred.txt 2>&1 merges stderr into the stdout redirect
         // rem however 2>&1  >fred.txt did not seem to do it.
@@ -482,7 +486,16 @@ module Printing =
         //     echo ERROR: Diff tool not found at %PRDIFF%
         //     exit /b 1
         // )
-        let prdiff a = Commands.fsdiff exec cfg.FSDIFF false a >> checkResult
+        let prdiff a b = 
+            let diffFile = Path.ChangeExtension(a, ".diff")
+            use writer = new StreamWriter(dir/diffFile, false)
+            let outFile = redirectToFile writer
+            let exec' path args =
+                log "%s %s >%s" path args diffFile
+                let appendToFile l = outFile.Post (l)
+                Process.exec { RedirectOutput = Some appendToFile; RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
+            Commands.fsdiff exec' cfg.FSDIFF false a b |> checkResult
+            |> (fun x -> outFile |> waitCompletion; x)
 
         let fsc_flags_errors_ok = ""
 
