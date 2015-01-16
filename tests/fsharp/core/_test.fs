@@ -22,10 +22,6 @@ let testConfig () =
 let check (f: Attempt<_,_>) =
     f |> Attempt.Run |> checkTestResult
 
-let test phases (p: Permutation) =
-    let { Directory = dir; Config = cfg } = testConfig ()
-    phases |> List.iter (fun phase -> phase cfg dir p)
-
 module Access =
     let permutations =
         FSharpTestSuite.allPermutation
