@@ -13,9 +13,9 @@ open PlatformHelpers
 
 let setTestDataInfo name = FSharpTestSuite.setTestDataInfo ("core", name)
 
-type TestRunConfig = { Directory: string; Config: TestConfig }
+type TestRunContext = { Directory: string; Config: TestConfig }
 
-let testConfig () =
+let testContext () =
     { Directory = NUnit.Framework.TestContext.CurrentContext.Test.Properties.["DIRECTORY"] :?> string;
       Config = suiteHelpers.Value }
 
@@ -29,7 +29,7 @@ module Access =
 
     [<Test; TestCaseSource("permutations")>]
     let access p = check (processor {
-        let { Directory = dir; Config = cfg } = testConfig ()
+        let { Directory = dir; Config = cfg } = testContext ()
         
         do! singleTestBuild cfg dir p
         
@@ -43,7 +43,7 @@ module Apporder =
 
     [<Test; TestCaseSource("permutations")>]
     let apporder p = check  (processor {
-        let { Directory = dir; Config = cfg } = testConfig ()
+        let { Directory = dir; Config = cfg } = testContext ()
         
         do! singleTestBuild cfg dir p
         
@@ -57,7 +57,7 @@ module Attributes =
 
     [<Test; TestCaseSource("permutations")>]
     let attributes p = check  (processor {
-        let { Directory = dir; Config = cfg } = testConfig ()
+        let { Directory = dir; Config = cfg } = testContext ()
         
         do! singleTestBuild cfg dir p
         
@@ -71,7 +71,7 @@ module Comprehensions =
 
     [<Test; TestCaseSource("permutations")>]
     let comprehensions p = check  (processor {
-        let { Directory = dir; Config = cfg } = testConfig ()
+        let { Directory = dir; Config = cfg } = testContext ()
         
         do! singleTestBuild cfg dir p
         
@@ -85,7 +85,7 @@ module ControlWpf =
 
     [<Test; TestCaseSource("permutations")>]
     let controlWpf p = check  (processor {
-        let { Directory = dir; Config = cfg } = testConfig ()
+        let { Directory = dir; Config = cfg } = testContext ()
         
         do! singleTestBuild cfg dir p
         
@@ -145,7 +145,7 @@ module Events =
 
     [<Test; TestCaseSource("testData")>]
     let events () = check  (processor {
-        let { Directory = dir; Config = cfg } = testConfig ()
+        let { Directory = dir; Config = cfg } = testContext ()
 
         do! build cfg dir
         
@@ -168,7 +168,7 @@ module ``FSI-Shadowcopy`` =
 
     [<Test; TestCaseSource("test1Data")>]
     let ``shadowcopy disabled`` (flags: string) = check  (processor {
-        let { Directory = dir; Config = cfg } = testConfig ()
+        let { Directory = dir; Config = cfg } = testContext ()
         let fsiIn args = Commands.fsiIn (execIn dir cfg.EnvironmentVariables) cfg.FSI args >> checkResult
 
         // if exist test1.ok (del /f /q test1.ok)
@@ -188,7 +188,7 @@ module ``FSI-Shadowcopy`` =
 
     [<Test; TestCaseSource("test2Data")>]
     let ``shadowcopy enabled`` (flags: string) = check (processor {
-        let { Directory = dir; Config = cfg } = testConfig ()
+        let { Directory = dir; Config = cfg } = testContext ()
         let fsiIn args = Commands.fsiIn (execIn dir cfg.EnvironmentVariables) cfg.FSI args >> checkResult
 
         // if exist test2.ok (del /f /q test2.ok)
@@ -209,7 +209,7 @@ module Forwarders =
 
     [<Test; TestCaseSource("testData")>]
     let forwarders () = check (processor {
-        let { Directory = dir; Config = cfg } = testConfig ()
+        let { Directory = dir; Config = cfg } = testContext ()
 
         let exec path args =
             log "%s %s" path args
@@ -326,7 +326,7 @@ module FsFromCs =
 
     [<Test; TestCaseSource("testData")>]
     let fsfromcs () = check (processor {
-        let { Directory = dir; Config = cfg } = testConfig ()
+        let { Directory = dir; Config = cfg } = testContext ()
 
         do! build cfg dir
 
@@ -412,7 +412,7 @@ module QueriesCustomQueryOps =
 
     [<Test; TestCaseSource("testData")>]
     let queriesCustomQueryOps () = check (processor {
-        let { Directory = dir; Config = cfg } = testConfig ()
+        let { Directory = dir; Config = cfg } = testContext ()
 
         do! build cfg dir
 
@@ -436,7 +436,7 @@ module Printing =
 
     [<Test; TestCaseSource("testData")>]
     let printing flag diffFile expectedFile = check (processor {
-        let { Directory = dir; Config = cfg } = testConfig ()
+        let { Directory = dir; Config = cfg } = testContext ()
 
         let exec path args =
             log "%s %s" path args
@@ -636,7 +636,7 @@ module Quotes =
 
     [<Test; TestCaseSource("testData")>]
     let quotes () = check (processor {
-        let { Directory = dir; Config = cfg } = testConfig ()
+        let { Directory = dir; Config = cfg } = testContext ()
 
         do! build cfg dir
 
@@ -652,7 +652,7 @@ module Namespaces =
 
     [<Test; TestCaseSource("permutations")>]
     let attributes p = check  (processor {
-        let { Directory = dir; Config = cfg } = testConfig ()
+        let { Directory = dir; Config = cfg } = testContext ()
         
         do! singleTestBuild cfg dir p
         
@@ -665,7 +665,7 @@ module Parsing =
 
     [<Test; TestCaseSource("testData")>]
     let parsing () = check  (processor {
-        let { Directory = dir; Config = cfg } = testConfig ()
+        let { Directory = dir; Config = cfg } = testContext ()
         
         let exec path args =
             log "%s %s" path args
