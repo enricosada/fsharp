@@ -644,3 +644,17 @@ module Quotes =
                 
         })
 
+
+module Namespaces = 
+    let permutations =
+        FSharpTestSuite.allPermutation
+        |> List.map (fun p -> (new TestCaseData (p)).SetCategory(sprintf "%A" p) |> setTestDataInfo "namespaces")
+
+    [<Test; TestCaseSource("permutations")>]
+    let attributes p = check  (processor {
+        let { Directory = dir; Config = cfg } = testConfig ()
+        
+        do! singleTestBuild cfg dir p
+        
+        do! singleTestRun cfg dir p
+        }) 
