@@ -283,8 +283,6 @@ module Forwarders =
 
 module FsFromCs = 
 
-    let testData = [ (new TestCaseData()) |> setTestDataInfo "fsfromcs" ]
-
     let build cfg dir = processor {
         let exec path args =
             log "%s %s" path args
@@ -328,6 +326,7 @@ module FsFromCs =
 
         }
 
+    let testData = [ (new TestCaseData()) |> setTestDataInfo "fsfromcs" ]
 
     [<Test; TestCaseSource("testData")>]
     let fsfromcs () = check (processor {
@@ -340,8 +339,6 @@ module FsFromCs =
         })
 
 module QueriesCustomQueryOps = 
-
-    let testData = [ (new TestCaseData()) |> setTestDataInfo "queriesCustomQueryOps" ]
 
     let build cfg dir = processor {
         let exec path args =
@@ -415,6 +412,7 @@ module QueriesCustomQueryOps =
 
         }
 
+    let testData = [ (new TestCaseData()) |> setTestDataInfo "queriesCustomQueryOps" ]
 
     [<Test; TestCaseSource("testData")>]
     let queriesCustomQueryOps () = check (processor {
