@@ -21,3 +21,8 @@ core/printing/z.raw.output.test.*.txt
 core/printing/z.output.test.*.diff
 
 core/quotes/cslib.dll
+
+core/parsing/crlf.dll
+core/parsing/crlf.pdb
+core/parsing/toplet.exe
+core/parsing/toplet.pdb

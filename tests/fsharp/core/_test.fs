@@ -658,3 +658,29 @@ module Namespaces =
         
         do! singleTestRun cfg dir p
         }) 
+
+module Parsing = 
+
+    let testData = [ (new TestCaseData()) |> setTestDataInfo "parsing" ]
+
+    [<Test; TestCaseSource("testData")>]
+    let parsing () = check  (processor {
+        let { Directory = dir; Config = cfg } = testConfig ()
+        
+        let exec path args =
+            log "%s %s" path args
+            Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
+        let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
+        let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
+        let fsc_flags = cfg.fsc_flags
+
+        // "%FSC%" %fsc_flags% -a -o:crlf.dll -g crlf.ml
+        do! fsc (sprintf "%s -a -o:crlf.dll -g" fsc_flags) ["crlf.ml"]
+
+        // "%FSC%" %fsc_flags% -o:toplet.exe -g toplet.ml
+        do! fsc (sprintf "%s -o:toplet.exe -g" fsc_flags) ["toplet.ml"]
+
+        // "%PEVERIFY%" toplet.exe
+        do! peverify "toplet.exe"
+
+        }) 
