@@ -138,7 +138,7 @@ type AttemptBuilder() =
     member this.Bind(m : Result<_, _>, success) = bind success (fun () -> m)
     member this.Bind(m : Result<_, _> option, success) = 
         match m with
-        | None -> this.Zero()
+        | None -> this.Combine(this.Zero(), success)
         | Some x -> this.Bind(x, success)
     member this.Return(x) : Attempt<_, _> = succeed x
     member this.ReturnFrom(x : Attempt<_, _>) = x
