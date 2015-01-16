@@ -89,6 +89,8 @@
     <None Include="core\printing\z.output.test.default.bsl" />
     <None Include="core\printing\z.output.test.off.bsl" />
     <None Include="core\printing\z.output.test.quiet.bsl" />
+    <None Include="core\quotes\cslib.cs" />
+    <None Include="core\quotes\test.fsx" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="nunit.framework, Version=2.6.3.13283, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77">

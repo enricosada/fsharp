@@ -564,3 +564,87 @@ module Printing =
 
 
         })
+
+module Quotes = 
+
+    let build cfg dir = processor {
+        let exec path args =
+            log "%s %s" path args
+            Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
+        let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
+        let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
+        let fsc_flags = cfg.fsc_flags
+        let csc args = Commands.csc exec cfg.CSC args >> checkResult
+
+        //missing csc
+        do! csc """/nologo  /target:library /out:cslib.dll""" ["cslib.cs"]
+
+        // "%FSC%" %fsc_flags% -o:test.exe -r cslib.dll -g test.fsx
+        do! fsc (sprintf "%s -o:test.exe -r cslib.dll -g" fsc_flags) ["test.fsx"]
+
+        // "%PEVERIFY%" test.exe 
+        do! peverify "test.exe"
+
+        // "%FSC%" %fsc_flags% --optimize -o:test--optimize.exe -r cslib.dll -g test.fsx
+        do! fsc (sprintf "%s --optimize -o:test--optimize.exe -r cslib.dll -g" fsc_flags) ["test.fsx"]
+
+        // "%PEVERIFY%" test--optimize.exe 
+        do! peverify "test--optimize.exe"
+        
+        }
+
+    let run cfg dir = processor {
+        let exec path args =
+            log "%s %s" path args
+            Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
+        let clix exe = exec exe >> checkResult
+        let fsi args = Commands.fsi exec cfg.FSI args >> checkResult
+
+        do! processor {
+            // if exist test.ok (del /f /q test.ok)
+            use testOkFile = FileGuard.create (dir/"test.ok")
+
+            // "%FSI%" %fsi_flags% -r cslib.dll test.fsx
+            do! fsi (sprintf "%s -r cslib.dll" cfg.fsi_flags) ["test.fsx"]
+            
+            // if NOT EXIST test.ok goto SetError
+            do! testOkFile |> NUnitConf.checkGuardExists
+            }
+
+        do! processor {
+            // if exist test.ok (del /f /q test.ok)
+            use testOkFile = FileGuard.create (dir/"test.ok")
+
+            // %CLIX% test.exe
+            do! clix ("."/"test.exe") ""
+
+            // if NOT EXIST test.ok goto SetError
+            do! testOkFile |> NUnitConf.checkGuardExists
+            }
+
+        do! processor {
+            // if exist test.ok (del /f /q test.ok)
+            use testOkFile = FileGuard.create (dir/"test.ok")
+
+            // %CLIX% test--optimize.exe
+            do! clix ("."/"test--optimize.exe") ""
+
+            // if NOT EXIST test.ok goto SetError
+            do! testOkFile |> NUnitConf.checkGuardExists
+            }
+
+        }
+
+
+    let testData = [ (new TestCaseData()) |> setTestDataInfo "quotes" ]
+
+    [<Test; TestCaseSource("testData")>]
+    let quotes () = check (processor {
+        let { Directory = dir; Config = cfg } = testConfig ()
+
+        do! build cfg dir
+
+        do! run cfg dir
+                
+        })
+
