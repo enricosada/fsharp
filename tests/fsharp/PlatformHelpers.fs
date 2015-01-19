@@ -93,15 +93,14 @@ module Process =
         cmdArgs.RedirectError |> Option.iter (fun _ -> p.BeginErrorReadLine())
 
         cmdArgs.RedirectInput
-        |> Option.iter (fun input ->
-            let pipeInput = async {
-                let inputWriter = p.StandardInput
-                input inputWriter
-                do! inputWriter.FlushAsync () |> Async.AwaitIAsyncResult |> Async.Ignore
-                inputWriter.Close ()
-            }
-            pipeInput |> Async.Start
-        )
+        |> Option.map (fun input -> async {
+            let inputWriter = p.StandardInput
+            do! inputWriter.FlushAsync () |> Async.AwaitIAsyncResult |> Async.Ignore
+            input inputWriter
+            do! inputWriter.FlushAsync () |> Async.AwaitIAsyncResult |> Async.Ignore
+            inputWriter.Close ()
+            })
+        |> Option.iter Async.Start
 
         let exitCode = p |> exitedAsync |> Async.AwaitTask |> Async.RunSynchronously
 

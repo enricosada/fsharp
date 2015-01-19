@@ -72,17 +72,19 @@ let fsi exec fsiExe flags sources =
 
 let fsiIn exec fsiExe flags sources =
     let inputWriter (writer: StreamWriter) =
-        let pipeFile name =
+        let pipeFile name = async {
             use reader = File.OpenRead name
             use ms = new MemoryStream()
-            reader.CopyTo (ms)
+            do! reader.CopyToAsync (ms) |> (Async.AwaitIAsyncResult >> Async.Ignore)
             ms.Position <- 0L
             try
-                ms.CopyTo(writer.BaseStream)
+                do! ms.CopyToAsync(writer.BaseStream) |> (Async.AwaitIAsyncResult >> Async.Ignore)
+                do! writer.FlushAsync() |> (Async.AwaitIAsyncResult >> Async.Ignore)
             with
             | :? System.IO.IOException as ex -> //input closed is ok if process is closed
                 ()
-        sources |> List.iter pipeFile
+            }
+        sources |> List.iter (pipeFile >> Async.RunSynchronously)
 
     exec inputWriter fsiExe flags
 
