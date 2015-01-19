@@ -60,9 +60,9 @@ let ngen exec (ngenExe: FilePath) assemblies =
     |> Seq.takeWhile (function ErrorLevel _ -> false | Ok -> true)
     |> Seq.last
 
-let fsc exec fscExe flags srcFiles =
+let fsc exec (fscExe: FilePath) flags srcFiles =
     // "%FSC%" %fsc_flags% --define:COMPILING_WITH_EMPTY_SIGNATURE -o:tmptest2.exe tmptest2.mli tmptest2.ml
-    exec fscExe (sprintf "%s %s"  flags (srcFiles |> Seq.ofList |> String.concat " "))
+    exec fscExe (sprintf "%s %s" flags (srcFiles |> Seq.ofList |> String.concat " "))
 
 let csc exec cscExe flags srcFiles =
     exec cscExe (sprintf "%s %s"  flags (srcFiles |> Seq.ofList |> String.concat " "))

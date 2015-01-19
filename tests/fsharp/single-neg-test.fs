@@ -25,20 +25,19 @@ let internal singleNegTest' (cfg: TestConfig) workDir testname = processor {
     // )
     ignore "already checked"
 
-    let exec path args =
-        log "%s %s" path args
-        use toLog = redirectToLog ()
-        Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } workDir cfg.EnvironmentVariables path args
-    let clix exe = exec exe >> checkResult
-    let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
-    let fsc_flags = cfg.fsc_flags
-    let fsdiff a = Commands.fsdiff exec cfg.FSDIFF true a >> checkResult
+    let fsdiff a = 
+        let exec path args =
+            log "%s %s" path args
+            use toLog = redirectToLog ()
+            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } workDir cfg.EnvironmentVariables path args
+        Commands.fsdiff exec cfg.FSDIFF true a >> checkResult
     let envOrFail key =
         cfg.EnvironmentVariables 
         |> Map.tryFind key 
         |> function Some x -> (fun () -> Success x) | None -> NUnitConf.genericError (sprintf "environment variable '%s' required " key)
     let fullpath path = if Path.IsPathRooted(path) then path else (workDir/path)
     let fileExists = fullpath >> fileExists
+    let fsc_flags = cfg.fsc_flags
 
     // if not exist "%FSC%" (
     //   set ERRORMSG=Could not find FSC at path "%FSC%"
@@ -107,11 +106,10 @@ let internal singleNegTest' (cfg: TestConfig) workDir testname = processor {
             // )
             let redirectErr path args =
                 log "%s %s 2> %s" path args errPath
-                let p = errPath |> fullpath
-                File.WriteAllText(p, "")
-                let appendLine s = File.AppendAllLines(p, [| s |])
+                use errFile = new StreamWriter(errPath |> fullpath, false)
+                use toFile = redirectTo errFile
                 use toLog = redirectToLog ()
-                Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some appendLine; RedirectInput = None; } workDir cfg.EnvironmentVariables path args
+                Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toFile.Post; RedirectInput = None; } workDir cfg.EnvironmentVariables path args
 
             Commands.fsc redirectErr cfg.FSC args sources
             |> function 

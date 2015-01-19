@@ -95,6 +95,13 @@
     <None Include="core\namespaces\test.fsi" />
     <None Include="core\parsing\crlf.ml" />
     <None Include="core\parsing\toplet.ml" />
+    <None Include="core\unicode\kanji-unicode-utf7-codepage-65000.fs" />
+    <None Include="core\unicode\kanji-unicode-utf8-nosig-codepage-65001.fs" />
+    <None Include="core\unicode\kanji-unicode-utf8-withsig-codepage-65001.fs" />
+    <None Include="core\unicode\kanji-unicode-utf16.fs" />
+    <None Include="core\unicode\out.bsl" />
+    <None Include="core\unicode\test.fsx" />
+    <None Include="core\unicode\utf8source.ml" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="nunit.framework, Version=2.6.3.13283, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77">

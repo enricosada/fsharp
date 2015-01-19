@@ -5,9 +5,6 @@ open System.IO
 open NUnit.Framework
 
 open TestConfig
-open SingleTestBuild
-open SingleTestRun
-open SingleNegTest
 open NUnitConf
 open PlatformHelpers
 
@@ -16,6 +13,11 @@ let setTestDataInfo name = FSharpTestSuite.setTestDataInfo ("core", name)
 let testContext () =
     { Directory = NUnit.Framework.TestContext.CurrentContext.Test.Properties.["DIRECTORY"] :?> string;
       Config = suiteHelpers.Value }
+
+let fsc exec exePath flags = Commands.fsc exec exePath flags >> checkResult
+let fsi exec exePath flags = Commands.fsi exec exePath flags >> checkResult
+let fsiIn exec exePath flags = Commands.fsiIn exec exePath flags >> checkResult
+let csc exec exePath flags = Commands.csc exec exePath flags >> checkResult
 
 module Access =
     let permutations =
@@ -26,9 +28,9 @@ module Access =
     let access p = check (processor {
         let { Directory = dir; Config = cfg } = testContext ()
         
-        do! singleTestBuild cfg dir p
+        do! SingleTestBuild.singleTestBuild cfg dir p
         
-        do! singleTestRun cfg dir p
+        do! SingleTestRun.singleTestRun cfg dir p
         })
 
 module Apporder = 
@@ -40,9 +42,9 @@ module Apporder =
     let apporder p = check  (processor {
         let { Directory = dir; Config = cfg } = testContext ()
         
-        do! singleTestBuild cfg dir p
+        do! SingleTestBuild.singleTestBuild cfg dir p
         
-        do! singleTestRun cfg dir p
+        do! SingleTestRun.singleTestRun cfg dir p
         })
 
 module Attributes = 
@@ -54,9 +56,9 @@ module Attributes =
     let attributes p = check  (processor {
         let { Directory = dir; Config = cfg } = testContext ()
         
-        do! singleTestBuild cfg dir p
+        do! SingleTestBuild.singleTestBuild cfg dir p
         
-        do! singleTestRun cfg dir p
+        do! SingleTestRun.singleTestRun cfg dir p
         }) 
 
 module Comprehensions = 
@@ -68,9 +70,9 @@ module Comprehensions =
     let comprehensions p = check  (processor {
         let { Directory = dir; Config = cfg } = testContext ()
         
-        do! singleTestBuild cfg dir p
+        do! SingleTestBuild.singleTestBuild cfg dir p
         
-        do! singleTestRun cfg dir p
+        do! SingleTestRun.singleTestRun cfg dir p
         })
 
 module ControlWpf = 
@@ -82,9 +84,9 @@ module ControlWpf =
     let controlWpf p = check  (processor {
         let { Directory = dir; Config = cfg } = testContext ()
         
-        do! singleTestBuild cfg dir p
+        do! SingleTestBuild.singleTestBuild cfg dir p
         
-        do! singleTestRun cfg dir p
+        do! SingleTestRun.singleTestRun cfg dir p
         })
 
 module Events = 
@@ -96,18 +98,18 @@ module Events =
             log "%s %s" path args
             use toLog = redirectToLog ()
             Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
-        let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
+        let fsc = Printf.ksprintf (fsc exec cfg.FSC)
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
-        let csc args = Commands.csc exec cfg.CSC args >> checkResult
+        let csc flagsFormat = Printf.ksprintf (csc exec cfg.CSC) flagsFormat
 
         // "%FSC%" %fsc_flags% -a -o:test.dll -g test.fs
-        do! fsc (sprintf "%s -a -o:test.dll -g" cfg.fsc_flags) ["test.fs"]
+        do! fsc "%s -a -o:test.dll -g" cfg.fsc_flags ["test.fs"]
 
         // "%PEVERIFY%" test.dll
         do! peverify "test.dll"
 
         // %CSC% /r:"%FSCOREDLLPATH%" /reference:test.dll /debug+ testcs.cs
-        do! csc (sprintf """/r:"%s" /reference:test.dll /debug+""" cfg.FSCOREDLLPATH) ["testcs.cs"]
+        do! csc """/r:"%s" /reference:test.dll /debug+""" cfg.FSCOREDLLPATH ["testcs.cs"]
 
         // "%PEVERIFY%" testcs.exe
         do! peverify "testcs.exe"
@@ -119,7 +121,7 @@ module Events =
             use toLog = redirectToLog ()
             Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
         let clix exe = exec exe >> checkResult
-        let fsi args = Commands.fsi exec cfg.FSI args >> checkResult
+        let fsi = Printf.ksprintf (fsi exec cfg.FSI)
 
         use testOkFile = FileGuard.create (dir/"test.ok")
 
@@ -167,12 +169,12 @@ module ``FSI-Shadowcopy`` =
     [<Test; TestCaseSource("test1Data")>]
     let ``shadowcopy disabled`` (flags: string) = check  (processor {
         let { Directory = dir; Config = cfg } = testContext ()
-        let fsiIn args = Commands.fsiIn (execIn dir cfg.EnvironmentVariables) cfg.FSI args >> checkResult
+        let fsiIn = Printf.ksprintf (fsiIn (execIn dir cfg.EnvironmentVariables) cfg.FSI)
 
         // if exist test1.ok (del /f /q test1.ok)
         use testOkFile = FileGuard.create (dir/"test1.ok")
 
-        do! fsiIn (sprintf "%s %s" cfg.fsi_flags flags) [dir/"test1.fsx"]
+        do! fsiIn "%s %s" cfg.fsi_flags flags [dir/"test1.fsx"]
 
         // if NOT EXIST test1.ok goto SetError
         do! testOkFile |> NUnitConf.checkGuardExists
@@ -187,13 +189,13 @@ module ``FSI-Shadowcopy`` =
     [<Test; TestCaseSource("test2Data")>]
     let ``shadowcopy enabled`` (flags: string) = check (processor {
         let { Directory = dir; Config = cfg } = testContext ()
-        let fsiIn args = Commands.fsiIn (execIn dir cfg.EnvironmentVariables) cfg.FSI args >> checkResult
+        let fsiIn = Printf.ksprintf (fsiIn (execIn dir cfg.EnvironmentVariables) cfg.FSI)
 
         // if exist test2.ok (del /f /q test2.ok)
         use testOkFile = FileGuard.create (dir/"test2.ok")
 
         // "%FSI%" %fsi_flags%  /shadowcopyreferences+  < test2.fsx
-        do! fsiIn (sprintf "%s %s" cfg.fsi_flags flags) [dir/"test2.fsx"]
+        do! fsiIn "%s %s" cfg.fsi_flags flags [dir/"test2.fsx"]
 
         // if NOT EXIST test2.ok goto SetError
         do! testOkFile |> NUnitConf.checkGuardExists
@@ -213,9 +215,9 @@ module Forwarders =
             log "%s %s" path args
             use toLog = redirectToLog ()
             Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
-        let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
+        let fsc = Printf.ksprintf (fsc exec cfg.FSC)
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
-        let csc args = Commands.csc exec cfg.CSC args >> checkResult
+        let csc = Printf.ksprintf (csc exec cfg.CSC)
         let copy_y f = Commands.copy_y dir f >> checkResult
         let mkdir = Commands.mkdir_p dir
 
@@ -283,28 +285,28 @@ module FsFromCs =
             log "%s %s" path args
             use toLog = redirectToLog ()
             Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
-        let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
+        let fsc = Printf.ksprintf (fsc exec cfg.FSC)
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
-        let csc args = Commands.csc exec cfg.CSC args >> checkResult
+        let csc = Printf.ksprintf (csc exec cfg.CSC)
         let fsc_flags = cfg.fsc_flags
 
         // "%FSC%" %fsc_flags% -a --doc:lib.xml -o:lib.dll -g lib.ml
-        do! fsc (sprintf "%s -a --doc:lib.xml -o:lib.dll -g" fsc_flags) ["lib.ml"]
+        do! fsc "%s -a --doc:lib.xml -o:lib.dll -g" fsc_flags ["lib.ml"]
 
         // "%PEVERIFY%" lib.dll
         do! peverify "lib.dll"
 
         // %CSC% /nologo /r:"%FSCOREDLLPATH%" /r:System.Core.dll /r:lib.dll /out:test.exe test.cs 
-        do! csc (sprintf """/nologo /r:"%s" /r:System.Core.dll /r:lib.dll /out:test.exe""" cfg.FSCOREDLLPATH) ["test.cs"]
+        do! csc """/nologo /r:"%s" /r:System.Core.dll /r:lib.dll /out:test.exe""" cfg.FSCOREDLLPATH ["test.cs"]
 
         // "%FSC%" %fsc_flags% -a --doc:lib--optimize.xml -o:lib--optimize.dll -g lib.ml
-        do! fsc (sprintf """%s -a --doc:lib--optimize.xml -o:lib--optimize.dll -g""" fsc_flags) ["lib.ml"]
+        do! fsc """%s -a --doc:lib--optimize.xml -o:lib--optimize.dll -g""" fsc_flags ["lib.ml"]
 
         // "%PEVERIFY%" lib--optimize.dll
         do! peverify "lib--optimize.dll"
 
         // %CSC% 
-        do! csc (sprintf """/nologo /r:"%s"  /r:System.Core.dll /r:lib--optimize.dll    /out:test--optimize.exe""" cfg.FSCOREDLLPATH) ["test.cs"]
+        do! csc """/nologo /r:"%s"  /r:System.Core.dll /r:lib--optimize.dll    /out:test--optimize.exe""" cfg.FSCOREDLLPATH ["test.cs"]
         
         }
 
@@ -342,25 +344,25 @@ module QueriesCustomQueryOps =
             log "%s %s" path args
             use toLog = redirectToLog ()
             Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
-        let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
+        let fsc = Printf.ksprintf (fsc exec cfg.FSC)
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
-        let csc args = Commands.csc exec cfg.CSC args >> checkResult
+        let csc = Printf.ksprintf (csc exec cfg.CSC)
         let fsc_flags = cfg.fsc_flags
 
         // "%FSC%" %fsc_flags% -o:test.exe -g test.fsx
-        do! fsc (sprintf """%s -o:test.exe -g""" fsc_flags) ["test.fsx"]
+        do! fsc """%s -o:test.exe -g""" fsc_flags ["test.fsx"]
 
         // "%PEVERIFY%" test.exe 
         do! peverify "test.exe"
 
         // "%FSC%" %fsc_flags% --optimize -o:test--optimize.exe -g test.fsx
-        do! fsc (sprintf """%s --optimize -o:test--optimize.exe -g""" fsc_flags) ["test.fsx"]
+        do! fsc """%s --optimize -o:test--optimize.exe -g""" fsc_flags ["test.fsx"]
 
         // "%PEVERIFY%" test--optimize.exe 
         do! peverify "test--optimize.exe"
 
         // call ..\..\single-neg-test.bat negativetest
-        do! singleNegTest cfg dir "negativetest"
+        do! SingleNegTest.singleNegTest cfg dir "negativetest"
         
         }
 
@@ -370,7 +372,7 @@ module QueriesCustomQueryOps =
             use toLog = redirectToLog ()
             Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
         let clix exe = exec exe >> checkResult
-        let fsi args = Commands.fsi exec cfg.FSI args >> checkResult
+        let fsi = Printf.ksprintf (fsi exec cfg.FSI)
 
         // echo TestC
         log "TestC"
@@ -379,7 +381,7 @@ module QueriesCustomQueryOps =
             use testOkFile = FileGuard.create (dir/"test.ok")
 
             // "%FSI%" %fsi_flags% test.fsx
-            do! fsi cfg.fsi_flags ["test.fsx"]
+            do! fsi "%s" cfg.fsi_flags ["test.fsx"]
 
             // if NOT EXIST test.ok goto SetError
             do! testOkFile |> NUnitConf.checkGuardExists
@@ -445,9 +447,7 @@ module Printing =
             log "%s %s" path args
             use toLog = redirectToLog ()
             Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
-        let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
-        let csc args = Commands.csc exec cfg.CSC args >> checkResult
         let copy from' = Commands.copy_y dir from' >> checkResult
 
         let fsiInAndRedirectOutErr flags inputFile outErrRedirectedTo =
@@ -558,22 +558,22 @@ module Quotes =
             log "%s %s" path args
             use toLog = redirectToLog ()
             Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
-        let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
+        let fsc = Printf.ksprintf (fsc exec cfg.FSC)
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
         let fsc_flags = cfg.fsc_flags
-        let csc args = Commands.csc exec cfg.CSC args >> checkResult
+        let csc = Printf.ksprintf (csc exec cfg.CSC)
 
         //missing csc
         do! csc """/nologo  /target:library /out:cslib.dll""" ["cslib.cs"]
 
         // "%FSC%" %fsc_flags% -o:test.exe -r cslib.dll -g test.fsx
-        do! fsc (sprintf "%s -o:test.exe -r cslib.dll -g" fsc_flags) ["test.fsx"]
+        do! fsc "%s -o:test.exe -r cslib.dll -g" fsc_flags ["test.fsx"]
 
         // "%PEVERIFY%" test.exe 
         do! peverify "test.exe"
 
         // "%FSC%" %fsc_flags% --optimize -o:test--optimize.exe -r cslib.dll -g test.fsx
-        do! fsc (sprintf "%s --optimize -o:test--optimize.exe -r cslib.dll -g" fsc_flags) ["test.fsx"]
+        do! fsc "%s --optimize -o:test--optimize.exe -r cslib.dll -g" fsc_flags ["test.fsx"]
 
         // "%PEVERIFY%" test--optimize.exe 
         do! peverify "test--optimize.exe"
@@ -586,14 +586,14 @@ module Quotes =
             use toLog = redirectToLog ()
             Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
         let clix exe = exec exe >> checkResult
-        let fsi args = Commands.fsi exec cfg.FSI args >> checkResult
+        let fsi = Printf.ksprintf (fsi exec cfg.FSI)
 
         do! processor {
             // if exist test.ok (del /f /q test.ok)
             use testOkFile = FileGuard.create (dir/"test.ok")
 
             // "%FSI%" %fsi_flags% -r cslib.dll test.fsx
-            do! fsi (sprintf "%s -r cslib.dll" cfg.fsi_flags) ["test.fsx"]
+            do! fsi "%s -r cslib.dll" cfg.fsi_flags ["test.fsx"]
             
             // if NOT EXIST test.ok goto SetError
             do! testOkFile |> NUnitConf.checkGuardExists
@@ -646,9 +646,9 @@ module Namespaces =
     let attributes p = check  (processor {
         let { Directory = dir; Config = cfg } = testContext ()
         
-        do! singleTestBuild cfg dir p
+        do! SingleTestBuild.singleTestBuild cfg dir p
         
-        do! singleTestRun cfg dir p
+        do! SingleTestRun.singleTestRun cfg dir p
         }) 
 
 module Parsing = 
@@ -663,17 +663,104 @@ module Parsing =
             log "%s %s" path args
             use toLog = redirectToLog ()
             Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
-        let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
+        let fsc = Printf.ksprintf (fsc exec cfg.FSC)
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
         let fsc_flags = cfg.fsc_flags
 
         // "%FSC%" %fsc_flags% -a -o:crlf.dll -g crlf.ml
-        do! fsc (sprintf "%s -a -o:crlf.dll -g" fsc_flags) ["crlf.ml"]
+        do! fsc "%s -a -o:crlf.dll -g" fsc_flags ["crlf.ml"]
 
         // "%FSC%" %fsc_flags% -o:toplet.exe -g toplet.ml
-        do! fsc (sprintf "%s -o:toplet.exe -g" fsc_flags) ["toplet.ml"]
+        do! fsc "%s -o:toplet.exe -g" fsc_flags ["toplet.ml"]
 
         // "%PEVERIFY%" toplet.exe
         do! peverify "toplet.exe"
 
+        }) 
+
+module Unicode = 
+
+    let build cfg dir p = processor {
+        
+        let exec path args =
+            log "%s %s" path args
+            use toLog = redirectToLog ()
+            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
+        let fsc = Printf.ksprintf (fsc exec cfg.FSC)
+        let fsc_flags = cfg.fsc_flags
+
+        // call %~d0%~p0..\..\single-test-build.bat
+        do! SingleTestBuild.singleTestBuild cfg dir p
+
+        // REM just checking the files actually parse/compile for now....
+
+        // "%FSC%" %fsc_flags% -a -o:kanji-unicode-utf8-nosig-codepage-65001.dll -g kanji-unicode-utf8-nosig-codepage-65001.fs
+        do! fsc "%s -a -o:kanji-unicode-utf8-nosig-codepage-65001.dll -g" fsc_flags ["kanji-unicode-utf8-nosig-codepage-65001.fs"]
+
+        // "%FSC%" %fsc_flags% -a -o:kanji-unicode-utf8-nosig-codepage-65001.dll -g kanji-unicode-utf8-nosig-codepage-65001.fs
+        do! fsc "%s -a -o:kanji-unicode-utf8-nosig-codepage-65001.dll -g" fsc_flags ["kanji-unicode-utf8-nosig-codepage-65001.fs"]
+
+        let codepage = processor {
+            // "%FSC%" %fsc_flags% -a -o:kanji-unicode-utf16.dll -g kanji-unicode-utf16.fs
+            do! fsc "%s -a -o:kanji-unicode-utf16.dll -g" fsc_flags ["kanji-unicode-utf16.fs"]
+
+            // "%FSC%" %fsc_flags% -a --codepage:65000 -o:kanji-unicode-utf7-codepage-65000.dll -g kanji-unicode-utf7-codepage-65000.fs
+            do! fsc "%s -a --codepage:65000 -o:kanji-unicode-utf7-codepage-65000.dll -g" fsc_flags ["kanji-unicode-utf7-codepage-65000.fs"]
+            }
+
+        // REM check non-utf8 and --codepage flag for bootstrapped fsc.exe
+        // if NOT "%FSC:fscp=X%" == "%FSC%" (
+        do! if not <| cfg.FSC.Contains("fscp") then codepage else Success
+
+        // "%FSC%" %fsc_flags% -a -o:kanji-unicode-utf8-withsig-codepage-65001.dll -g kanji-unicode-utf8-withsig-codepage-65001.fs
+        do! fsc "%s -a -o:kanji-unicode-utf8-withsig-codepage-65001.dll -g" fsc_flags ["kanji-unicode-utf8-withsig-codepage-65001.fs"]
+        }
+
+    let run cfg dir p = processor {
+        let exec path args =
+            log "%s %s" path args
+            use toLog = redirectToLog ()
+            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
+        let fsi = Printf.ksprintf (fsi exec cfg.FSI)
+        let fsi_flags = cfg.fsi_flags
+
+        // if exist test.ok (del /f /q test.ok)
+        ignore "unused"
+        // "%FSI%" %fsi_flags% --utf8output kanji-unicode-utf8-nosig-codepage-65001.fs
+        do! fsi "%s --utf8output" fsi_flags ["kanji-unicode-utf8-nosig-codepage-65001.fs"]
+
+        // if exist test.ok (del /f /q test.ok)
+        ignore "unused"
+        // "%FSI%" %fsi_flags% --utf8output --codepage:65001 kanji-unicode-utf8-withsig-codepage-65001.fs
+        do! fsi "%s --utf8output --codepage:65001" fsi_flags ["kanji-unicode-utf8-withsig-codepage-65001.fs"]
+
+        // if exist test.ok (del /f /q test.ok)
+        ignore "unused"
+        // "%FSI%" %fsi_flags% --utf8output kanji-unicode-utf8-withsig-codepage-65001.fs
+        do! fsi "%s --utf8output" fsi_flags ["kanji-unicode-utf8-withsig-codepage-65001.fs"]
+
+        // if exist test.ok (del /f /q test.ok)
+        ignore "unused"
+        // "%FSI%" %fsi_flags% --utf8output --codepage:65000  kanji-unicode-utf7-codepage-65000.fs
+        do! fsi "%s --utf8output --codepage:65000" fsi_flags ["kanji-unicode-utf7-codepage-65000.fs"]
+
+        // if exist test.ok (del /f /q test.ok)
+        ignore "unused"
+        // "%FSI%" %fsi_flags% --utf8output kanji-unicode-utf16.fs
+        do! fsi "%s --utf8output" fsi_flags ["kanji-unicode-utf16.fs"]
+
+        // call %~d0%~p0..\..\single-test-run.bat
+        do! SingleTestRun.singleTestRun cfg dir p
+        }
+
+    let permutations = 
+        FSharpTestSuite.allPermutation
+        |> List.map (fun p -> (new TestCaseData (p)).SetCategory(sprintf "%A" p) |> setTestDataInfo "unicode")
+
+    [<Test; TestCaseSource("permutations")>]
+    let unicode p = check  (processor {
+        let { Directory = dir; Config = cfg } = testContext ()
+
+        do! build cfg dir p        
+        do! run cfg dir p
         }) 

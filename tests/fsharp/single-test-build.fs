@@ -102,7 +102,7 @@ let singleTestBuild cfg testDir =
     let echo_tofile = Commands.echo_tofile testDir
     let copy_y f = Commands.copy_y testDir f >> checkResult
     let type_append_tofile = Commands.type_append_tofile testDir
-    let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
+    let fsc flagsFormat = Printf.ksprintf (fun flags -> Commands.fsc exec cfg.FSC flags >> checkResult) flagsFormat
     let fsc_flags = cfg.fsc_flags
     let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
     let ``echo._tofile`` = Commands.``echo._tofile`` testDir
@@ -159,7 +159,7 @@ let singleTestBuild cfg testDir =
     let doBasic () = processor { 
         // FSC %fsc_flags% --define:BASIC_TEST -o:test.exe -g %sources%
         //if ERRORLEVEL 1 goto Error
-        do! fsc (sprintf "%s --define:BASIC_TEST -o:test.exe -g" fsc_flags) sources 
+        do! fsc "%s --define:BASIC_TEST -o:test.exe -g" fsc_flags sources 
 
         //if NOT EXIST dont.run.peverify (
         //    "%PEVERIFY%" test.exe
@@ -171,7 +171,7 @@ let singleTestBuild cfg testDir =
     let doBasic64 () = processor {
         // "%FSC%" %fsc_flags% --define:BASIC_TEST --platform:x64 -o:testX64.exe -g %sources%
         // if ERRORLEVEL 1 goto Error
-        do! fsc (sprintf "%s --define:BASIC_TEST --platform:x64 -o:testX64.exe -g" fsc_flags) sources
+        do! fsc "%s --define:BASIC_TEST --platform:x64 -o:testX64.exe -g" fsc_flags sources
 
         // if NOT EXIST dont.run.peverify (
         //     "%PEVERIFY%" testX64.exe
@@ -185,7 +185,7 @@ let singleTestBuild cfg testDir =
         if Directory.EnumerateFiles(testDir, "test-hw.*") |> Seq.tryPick fileExists |> Option.isSome then
             // "%FSC%" %fsc_flags% -o:test-hw.exe -g %sourceshw%
             // if ERRORLEVEL 1 goto Error
-            do! fsc (sprintf "%s -o:test-hw.exe -g" fsc_flags) sourceshw
+            do! fsc "%s -o:test-hw.exe -g" fsc_flags sourceshw
 
             // if NOT EXIST dont.run.peverify (
             //   "%PEVERIFY%" test-hw.exe
@@ -198,7 +198,7 @@ let singleTestBuild cfg testDir =
     let doFscO3 () = processor {
         //"%FSC%" %fsc_flags% --optimize --define:PERF -o:test--optimize.exe -g %sources%
         //if ERRORLEVEL 1 goto Error
-        do! fsc (sprintf "%s --optimize --define:PERF -o:test--optimize.exe -g" fsc_flags) sources 
+        do! fsc "%s --optimize --define:PERF -o:test--optimize.exe -g" fsc_flags sources 
         //if NOT EXIST dont.run.peverify (
         //    "%PEVERIFY%" test--optimize.exe
         //    @if ERRORLEVEL 1 goto Error
@@ -218,13 +218,13 @@ let singleTestBuild cfg testDir =
                 //  REM NOTE: use --generate-interface-file since results may be in Unicode
                 //  "%FSC%" %fsc_flags% --sig:tmptest.mli tmptest.ml
                 //  if ERRORLEVEL 1 goto Error
-                do! fsc (sprintf "%s --sig:tmptest.mli" fsc_flags) ["tmptest.ml"]
+                do! fsc "%s --sig:tmptest.mli" fsc_flags ["tmptest.ml"]
 
                 //  echo Compiling against generated interface file...
                 log "Compiling against generated interface file..."
                 //  "%FSC%" %fsc_flags% -o:tmptest1.exe tmptest.mli tmptest.ml
                 //  if ERRORLEVEL 1 goto Error
-                do! fsc (sprintf "%s -o:tmptest1.exe" fsc_flags) ["tmptest.mli";"tmptest.ml"]
+                do! fsc "%s -o:tmptest1.exe" fsc_flags ["tmptest.mli";"tmptest.ml"]
 
                 //  if NOT EXIST dont.run.peverify (
                 //    "%PEVERIFY%" tmptest1.exe
@@ -248,7 +248,7 @@ let singleTestBuild cfg testDir =
                 do! source1 |> Option.map (fun from -> copy_y from "tmptest2.ml")
                 // "%FSC%" %fsc_flags% --define:COMPILING_WITH_EMPTY_SIGNATURE -o:tmptest2.exe tmptest2.mli tmptest2.ml
                 // if ERRORLEVEL 1 goto Error
-                do! fsc (sprintf "%s --define:COMPILING_WITH_EMPTY_SIGNATURE -o:tmptest2.exe" fsc_flags) ["tmptest2.mli";"tmptest2.ml"]
+                do! fsc "%s --define:COMPILING_WITH_EMPTY_SIGNATURE -o:tmptest2.exe" fsc_flags ["tmptest2.mli";"tmptest2.ml"]
 
                 // if NOT EXIST dont.run.peverify (
                 //     "%PEVERIFY%" tmptest2.exe
@@ -273,7 +273,7 @@ let singleTestBuild cfg testDir =
                 do! source1 |> Option.map (fun from -> copy_y from "tmptest2.ml")
                 // "%FSC%" %fsc_flags% --define:COMPILING_WITH_EMPTY_SIGNATURE --optimize -o:tmptest2--optimize.exe tmptest2.mli tmptest2.ml
                 // if ERRORLEVEL 1 goto Error
-                do! fsc (sprintf "%s --define:COMPILING_WITH_EMPTY_SIGNATURE --optimize -o:tmptest2--optimize.exe" fsc_flags) ["tmptest2.mli";"tmptest2.ml"]
+                do! fsc "%s --define:COMPILING_WITH_EMPTY_SIGNATURE --optimize -o:tmptest2--optimize.exe" fsc_flags ["tmptest2.mli";"tmptest2.ml"]
 
                 // if NOT EXIST dont.run.peverify (
                 //     "%PEVERIFY%" tmptest2--optimize.exe
@@ -287,7 +287,7 @@ let singleTestBuild cfg testDir =
     let doOptFscMinusDebug () = processor {
         // "%FSC%" %fsc_flags% --optimize- --debug -o:test--optminus--debug.exe -g %sources%
         // if ERRORLEVEL 1 goto Error
-        do! fsc (sprintf "%s --optimize- --debug -o:test--optminus--debug.exe -g" fsc_flags) sources
+        do! fsc "%s --optimize- --debug -o:test--optminus--debug.exe -g" fsc_flags sources
 
         // if NOT EXIST dont.run.peverify (
         //     "%PEVERIFY%" test--optminus--debug.exe
@@ -299,7 +299,7 @@ let singleTestBuild cfg testDir =
     let doOptFscPlusDebug () = processor {
         // "%FSC%" %fsc_flags% --optimize+ --debug -o:test--optplus--debug.exe -g %sources%
         // if ERRORLEVEL 1 goto Error
-        do! fsc (sprintf "%s --optimize+ --debug -o:test--optplus--debug.exe -g" fsc_flags) sources
+        do! fsc "%s --optimize+ --debug -o:test--optplus--debug.exe -g" fsc_flags sources
 
         // if NOT EXIST dont.run.peverify (
         //     "%PEVERIFY%" test--optplus--debug.exe
@@ -317,11 +317,11 @@ let singleTestBuild cfg testDir =
         if testDir/"dont.compile.test.as.dll" |> fileExists |> Option.isNone then
             // "%FSC%" %fsc_flags% --optimize -a -o:test--optimize-lib.dll -g %sources%
             // if ERRORLEVEL 1 goto Error
-            do! fsc (sprintf "%s --optimize -a -o:test--optimize-lib.dll -g" fsc_flags) sources
+            do! fsc "%s --optimize -a -o:test--optimize-lib.dll -g" fsc_flags sources
 
             // "%FSC%" %fsc_flags% --optimize -r:test--optimize-lib.dll -o:test--optimize-client-of-lib.exe -g %sources%
             // if ERRORLEVEL 1 goto Error
-            do! fsc (sprintf "%s --optimize -r:test--optimize-lib.dll -o:test--optimize-client-of-lib.exe -g" fsc_flags) sources
+            do! fsc "%s --optimize -r:test--optimize-lib.dll -o:test--optimize-client-of-lib.exe -g" fsc_flags sources
 
             // if NOT EXIST dont.run.peverify (
             //     "%PEVERIFY%" test--optimize-lib.dll
@@ -350,7 +350,7 @@ let singleTestBuild cfg testDir =
                 source1 |> Option.iter (fun from -> type_append_tofile from "tmptest3.ml")
                 // "%FSC%" %fsc_flags% -o:tmptest3.exe tmptest3.ml
                 // if ERRORLEVEL 1 goto Error
-                do! fsc (sprintf "%s -o:tmptest3.exe" fsc_flags) ["tmptest3.ml"]
+                do! fsc "%s -o:tmptest3.exe" fsc_flags ["tmptest3.ml"]
 
                 // if NOT EXIST dont.run.peverify (
                 //     "%PEVERIFY%" tmptest3.exe
@@ -374,7 +374,7 @@ let singleTestBuild cfg testDir =
                 source1 |> Option.iter (fun from -> type_append_tofile from "tmptest3.ml")
                 // "%FSC%" %fsc_flags% --optimize -o:tmptest3--optimize.exe tmptest3.ml
                 // if ERRORLEVEL 1 goto Error
-                do! fsc (sprintf "%s --optimize -o:tmptest3--optimize.exe" fsc_flags) ["tmptest3.ml"]
+                do! fsc "%s --optimize -o:tmptest3--optimize.exe" fsc_flags ["tmptest3.ml"]
 
                 // if NOT EXIST dont.run.peverify (
                 //     "%PEVERIFY%" tmptest3--optimize.exe
