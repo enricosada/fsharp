@@ -94,10 +94,10 @@ let singleTestBuild cfg testDir =
     //)
     ignore "permutations useless because build type is an input"
 
-    let loglines = log "%s"
     let exec exe args =
         log "%s %s" exe args
-        Process.exec { RedirectOutput = Some loglines; RedirectError = Some loglines; RedirectInput = None; } testDir cfg.EnvironmentVariables exe args
+        use toLog = redirectToLog ()
+        Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } testDir cfg.EnvironmentVariables exe args
 
     let echo_tofile = Commands.echo_tofile testDir
     let copy_y f = Commands.copy_y testDir f >> checkResult

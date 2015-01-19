@@ -27,7 +27,8 @@ let internal singleNegTest' (cfg: TestConfig) workDir testname = processor {
 
     let exec path args =
         log "%s %s" path args
-        Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } workDir cfg.EnvironmentVariables path args
+        use toLog = redirectToLog ()
+        Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } workDir cfg.EnvironmentVariables path args
     let clix exe = exec exe >> checkResult
     let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
     let fsc_flags = cfg.fsc_flags
@@ -109,7 +110,8 @@ let internal singleNegTest' (cfg: TestConfig) workDir testname = processor {
                 let p = errPath |> fullpath
                 File.WriteAllText(p, "")
                 let appendLine s = File.AppendAllLines(p, [| s |])
-                Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some appendLine; RedirectInput = None; } workDir cfg.EnvironmentVariables path args
+                use toLog = redirectToLog ()
+                Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some appendLine; RedirectInput = None; } workDir cfg.EnvironmentVariables path args
 
             Commands.fsc redirectErr cfg.FSC args sources
             |> function 
@@ -120,7 +122,8 @@ let internal singleNegTest' (cfg: TestConfig) workDir testname = processor {
             let out = new ResizeArray<string>()
             let redirectOutputToFile path args =
                 log "%s %s" path args
-                Process.exec { RedirectOutput = Some (function null -> () | s -> out.Add(s)); RedirectError = Some (log "%s"); RedirectInput = None; } workDir cfg.EnvironmentVariables path args
+                let toLog = redirectToLog ()
+                Process.exec { RedirectOutput = Some (function null -> () | s -> out.Add(s)); RedirectError = Some toLog.Post; RedirectInput = None; } workDir cfg.EnvironmentVariables path args
             do! (Commands.fsdiff redirectOutputToFile cfg.FSDIFF true a b) |> checkResult
             return out.ToArray() |> List.ofArray
             }

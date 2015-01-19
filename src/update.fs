@@ -32,7 +32,8 @@ let updateCmd envVars args = processor {
     let ``~dp0`` = __SOURCE_DIRECTORY__
     let exec exe args = 
         log "%s %s" exe args
-        Process.exec { RedirectError = Some (log "%s"); RedirectOutput = Some (log "%s"); RedirectInput = None } ``~dp0`` envVars exe args
+        use toLog = redirectToLog ()
+        Process.exec { RedirectError = Some toLog.Post; RedirectOutput = Some toLog.Post; RedirectInput = None } ``~dp0`` envVars exe args
 
     // set BINDIR=%~dp0..\%1\net40\bin
     let! BINDIR = env "FSCBinPath"

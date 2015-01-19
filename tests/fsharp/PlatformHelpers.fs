@@ -183,3 +183,25 @@ let inline (/) a b = Path.Combine(a,b)
 let fileExists path = if path |> File.Exists then Some path else None
 let directoryExists path = if path |> Directory.Exists then Some path else None
 
+
+type OutPipe (mailbox: MailboxProcessor<_>) =
+    member x.Post msg = mailbox.Post(msg)
+    interface System.IDisposable with
+        member x.Dispose () = 
+            async {
+                while mailbox.CurrentQueueLength > 0 do
+                    let timeout = System.TimeSpan.FromMilliseconds(50.0)
+                    do! Async.Sleep (timeout.TotalMilliseconds |> int)
+            } |> Async.RunSynchronously
+
+let redirectTo (writer: TextWriter) =
+    let mailbox = MailboxProcessor.Start(fun inbox -> 
+        let rec loop () = async {
+            let! (msg : string) = inbox.Receive ()
+            do! writer.WriteLineAsync(msg) |> (Async.AwaitIAsyncResult >> Async.Ignore)
+            return! loop () }
+        loop ())
+    new OutPipe (mailbox)
+
+let redirectToLog () = redirectTo System.Console.Out
+

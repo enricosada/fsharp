@@ -100,11 +100,7 @@ let convertToShortPath path =
     let result = ref None
     let lastLine = function null -> () | l -> result := Some l
 
-    let cmdArgs = {
-        RedirectOutput = Some lastLine;
-        RedirectError = None;
-        RedirectInput = None;
-    }
+    let cmdArgs = { RedirectOutput = Some lastLine; RedirectError = None; RedirectInput = None }
     
     let args = sprintf """/c for /f "delims=" %%I in ("%s") do echo %%~dfsI""" path
 
@@ -118,7 +114,7 @@ let where envVars cmd =
     let lastLine = function null -> () | l -> result := Some l
 
     let cmdArgs = { RedirectOutput = Some lastLine; RedirectError = None; RedirectInput = None; }
-    
+
     match Process.exec cmdArgs (Path.GetTempPath()) envVars "cmd.exe" (sprintf "/c where %s" cmd) with
     | ErrorLevel _ -> None
     | CmdResult.Success -> !result    

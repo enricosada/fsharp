@@ -13,14 +13,9 @@ open PlatformHelpers
 
 let setTestDataInfo name = FSharpTestSuite.setTestDataInfo ("core", name)
 
-type TestRunContext = { Directory: string; Config: TestConfig }
-
 let testContext () =
     { Directory = NUnit.Framework.TestContext.CurrentContext.Test.Properties.["DIRECTORY"] :?> string;
       Config = suiteHelpers.Value }
-
-let check (f: Attempt<_,_>) =
-    f |> Attempt.Run |> checkTestResult
 
 module Access =
     let permutations =
@@ -99,7 +94,8 @@ module Events =
     let build cfg dir = processor {
         let exec path args =
             log "%s %s" path args
-            Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
+            use toLog = redirectToLog ()
+            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
         let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
         let csc args = Commands.csc exec cfg.CSC args >> checkResult
@@ -120,7 +116,8 @@ module Events =
     let run cfg dir = processor {
         let exec path args = 
             log "%s %s" path args
-            Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
+            use toLog = redirectToLog ()
+            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
         let clix exe = exec exe >> checkResult
         let fsi args = Commands.fsi exec cfg.FSI args >> checkResult
 
@@ -158,7 +155,8 @@ module ``FSI-Shadowcopy`` =
     open PlatformHelpers
 
     let execIn dir envVars input = 
-        Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = Some input; } dir envVars
+        use toLog = redirectToLog ()
+        Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = Some input; } dir envVars
 
     let test1Data = 
         // "%FSI%" %fsi_flags%                          < test1.fsx
@@ -213,7 +211,8 @@ module Forwarders =
 
         let exec path args =
             log "%s %s" path args
-            Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
+            use toLog = redirectToLog ()
+            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
         let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
         let csc args = Commands.csc exec cfg.CSC args >> checkResult
@@ -282,7 +281,8 @@ module FsFromCs =
     let build cfg dir = processor {
         let exec path args =
             log "%s %s" path args
-            Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
+            use toLog = redirectToLog ()
+            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
         let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
         let csc args = Commands.csc exec cfg.CSC args >> checkResult
@@ -311,7 +311,8 @@ module FsFromCs =
     let run cfg dir = processor {
         let exec path args =
             log "%s %s" path args
-            Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
+            use toLog = redirectToLog ()
+            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
         let clix exe = exec exe >> checkResult
 
         // %CLIX% .\test.exe
@@ -339,7 +340,8 @@ module QueriesCustomQueryOps =
     let build cfg dir = processor {
         let exec path args =
             log "%s %s" path args
-            Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
+            use toLog = redirectToLog ()
+            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
         let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
         let csc args = Commands.csc exec cfg.CSC args >> checkResult
@@ -365,7 +367,8 @@ module QueriesCustomQueryOps =
     let run cfg dir = processor {
         let exec path args =
             log "%s %s" path args
-            Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
+            use toLog = redirectToLog ()
+            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
         let clix exe = exec exe >> checkResult
         let fsi args = Commands.fsi exec cfg.FSI args >> checkResult
 
@@ -440,33 +443,21 @@ module Printing =
 
         let exec path args =
             log "%s %s" path args
-            Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
+            use toLog = redirectToLog ()
+            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
         let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
         let csc args = Commands.csc exec cfg.CSC args >> checkResult
         let copy from' = Commands.copy_y dir from' >> checkResult
 
-        let redirectToFile (writer: StreamWriter) =
-            MailboxProcessor.Start(fun inbox -> 
-                let rec loop () = async {
-                    let! (msg : string) = inbox.Receive ()
-                    do! writer.WriteLineAsync(msg) |> (Async.AwaitIAsyncResult >> Async.Ignore)
-                    return! loop () }
-                loop ())
-
-        let waitCompletion (mailbox: MailboxProcessor<_>) =
-            while mailbox.CurrentQueueLength > 0 do System.Threading.Thread.Sleep(TimeSpan.FromMilliseconds(100.0))
-
         let fsiInAndRedirectOutErr flags inputFile outErrRedirectedTo =
-            use writer = new StreamWriter(outErrRedirectedTo, false)
-            let outFile = redirectToFile writer
             let exec' input path args =
                 log "%s %s <%s >%s 2>&1" path args inputFile outErrRedirectedTo
-                let appendToFile l = outFile.Post (l)
-                Process.exec { RedirectOutput = Some appendToFile; RedirectError = Some appendToFile; RedirectInput = Some input; } dir cfg.EnvironmentVariables path args
+                use writer = new StreamWriter(outErrRedirectedTo, false)
+                use outFile = redirectTo writer
+                Process.exec { RedirectOutput = Some outFile.Post; RedirectError = Some outFile.Post; RedirectInput = Some input; } dir cfg.EnvironmentVariables path args
             // "%FSI%" %fsc_flags_errors_ok%  --nologo                                    <test.fsx >z.raw.output.test.default.txt 2>&1
             Commands.fsiIn exec' cfg.FSI flags [ inputFile ] |> checkResult
-            |> (fun x -> outFile |> waitCompletion; x)
         
         // rem recall  >fred.txt 2>&1 merges stderr into the stdout redirect
         // rem however 2>&1  >fred.txt did not seem to do it.
@@ -482,14 +473,13 @@ module Printing =
         // )
         let prdiff a b = 
             let diffFile = Path.ChangeExtension(a, ".diff")
-            use writer = new StreamWriter(dir/diffFile, false)
-            let outFile = redirectToFile writer
             let exec' path args =
                 log "%s %s >%s" path args diffFile
-                let appendToFile l = outFile.Post (l)
-                Process.exec { RedirectOutput = Some appendToFile; RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
+                use writer = new StreamWriter(dir/diffFile, false)
+                use outFile = redirectTo writer
+                use toLog = redirectToLog ()
+                Process.exec { RedirectOutput = Some outFile.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
             Commands.fsdiff exec' cfg.FSDIFF false a b |> checkResult
-            |> (fun x -> outFile |> waitCompletion; x)
 
         let fsc_flags_errors_ok = ""
 
@@ -566,7 +556,8 @@ module Quotes =
     let build cfg dir = processor {
         let exec path args =
             log "%s %s" path args
-            Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
+            use toLog = redirectToLog ()
+            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
         let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
         let fsc_flags = cfg.fsc_flags
@@ -592,7 +583,8 @@ module Quotes =
     let run cfg dir = processor {
         let exec path args =
             log "%s %s" path args
-            Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
+            use toLog = redirectToLog ()
+            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
         let clix exe = exec exe >> checkResult
         let fsi args = Commands.fsi exec cfg.FSI args >> checkResult
 
@@ -669,7 +661,8 @@ module Parsing =
         
         let exec path args =
             log "%s %s" path args
-            Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } dir cfg.EnvironmentVariables path args
+            use toLog = redirectToLog ()
+            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
         let fsc args = Commands.fsc exec cfg.FSC args >> checkResult
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
         let fsc_flags = cfg.fsc_flags

@@ -85,15 +85,16 @@ let private singleTestRun' cfg testDir =
 
     let exec exe args = 
         log "%s %s" exe args
-        Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = None; } testDir cfg.EnvironmentVariables exe args
-
-    let execIn input exe args = 
-        Process.exec { RedirectOutput = Some (log "%s"); RedirectError = Some (log "%s"); RedirectInput = Some input; } testDir cfg.EnvironmentVariables exe args
+        use toLog = redirectToLog ()
+        Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } testDir cfg.EnvironmentVariables exe args
 
     let clix exe = exec exe >> checkResult
     let fsi args = Commands.fsi exec cfg.FSI args >> checkResult
     let fsiIn flags sources =
         log "%s %s < %s" cfg.FSI flags (sources |> Seq.ofList |> String.concat " ")
+        let execIn input = 
+            use toLog = redirectToLog ()
+            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = Some input; } testDir cfg.EnvironmentVariables
         let inputs = sources |> List.map fullpath
         inputs
         |> List.map (fun p -> (p, p |> fileExists))

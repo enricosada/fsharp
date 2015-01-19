@@ -69,10 +69,8 @@ let initializeSuite () =
             let tempDir = Commands.createTempDir ()
             let exec exe args = 
                 log "%s %s" exe args
-                Process.exec { RedirectError = Some (log "%s"); RedirectOutput = Some (log "%s"); RedirectInput = None } tempDir cfg.EnvironmentVariables exe args
-            let execIn input exe args = 
-                log "%s %s" exe args
-                Process.exec { RedirectError = Some (log "%s"); RedirectOutput = Some (log "%s"); RedirectInput = Some input } tempDir cfg.EnvironmentVariables exe args
+                use toLog = redirectToLog ()
+                Process.exec { RedirectError = Some toLog.Post; RedirectOutput = Some toLog.Post; RedirectInput = None } tempDir cfg.EnvironmentVariables exe args
 
             do! Commands.fsc exec cfg.FSC "" [ tempFile ".fs" ] |> checkResult
 
@@ -194,3 +192,8 @@ let checkGuardExists guard = processor {
     }
 
 
+
+type TestRunContext = { Directory: string; Config: TestConfig }
+
+let check (f: Attempt<_,_>) =
+    f |> Attempt.Run |> checkTestResult
