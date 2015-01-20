@@ -30,7 +30,7 @@ let envVars () =
 let initializeSuite () =
 
     let configurationName = DEBUG
-    let doNgen = false;
+    let doNgen = true;
     let FSCBinPath = System.IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", (sprintf "%O" configurationName), "net40", "bin")
 
     let mapWithDefaults defaults m =
