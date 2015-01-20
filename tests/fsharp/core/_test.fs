@@ -86,8 +86,6 @@ module ControlWpf =
 
 module Events = 
 
-    open PlatformHelpers
-
     let build cfg dir = processor {
         let exec p = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None} p >> checkResult
         let fsc = Printf.ksprintf (Commands.fsc exec cfg.FSC)
@@ -142,8 +140,6 @@ module Events =
 
 
 module ``FSI-Shadowcopy`` = 
-
-    open PlatformHelpers
 
     let test1Data = 
         // "%FSI%" %fsi_flags%                          < test1.fsx
