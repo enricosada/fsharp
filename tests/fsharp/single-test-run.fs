@@ -481,7 +481,8 @@ let singleTestRun config testDir =
         //  set ERRORMSG=%ERRORMSG% Skipped because 'build.ok' not found.
         //  goto :ERROR
         //)
-        if testDir/"build.ok" |> fileExists |> Option.isSome then
+        if testDir/"build.ok" |> fileExists |> Option.isNone then do! genericError "Skipped because 'build.ok' not found."
+        else
             // call %~d0%~p0..\config.bat
             let cfg = config
             // if errorlevel 1 (
