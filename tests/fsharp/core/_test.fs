@@ -107,7 +107,7 @@ module Events =
 
     let run cfg dir = processor {
         let exec p = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None} p >> checkResult
-        let clix exe = exec exe
+        let clix = exec
         let fsi = Printf.ksprintf (Commands.fsi exec cfg.FSI)
 
         use testOkFile = FileGuard.create (dir/"test.ok")
@@ -291,7 +291,7 @@ module FsFromCs =
 
     let run cfg dir = processor {
         let exec p = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; } p >> checkResult
-        let clix exe = exec exe
+        let clix = exec
 
         // %CLIX% .\test.exe
         do! clix ("."/"test.exe") ""
@@ -341,7 +341,7 @@ module QueriesCustomQueryOps =
 
     let run cfg dir = processor {
         let exec p = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; } p >> checkResult
-        let clix exe = exec exe
+        let clix = exec
         let fsi = Printf.ksprintf (Commands.fsi exec cfg.FSI)
 
         // echo TestC
@@ -539,7 +539,7 @@ module Quotes =
 
     let run cfg dir = processor {
         let exec p = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; } p >> checkResult
-        let clix exe = exec exe
+        let clix = exec
         let fsi = Printf.ksprintf (Commands.fsi exec cfg.FSI)
 
         do! processor {
