@@ -54,7 +54,7 @@ let gacutil exec exeName flags assembly : CmdResult =
 let ngen exec (ngenExe: FilePath) assemblies =
     let queue = assemblies |> List.map (fun a -> (sprintf "install \"%s\" /queue:1" a))
 
-    List.concat [ ["executeQueuedItems 1"]; queue ]
+    List.concat [ queue; ["executeQueuedItems 1"] ]
     |> Seq.ofList
     |> Seq.map (fun args -> exec ngenExe args)
     |> Seq.takeWhile (function ErrorLevel _ -> false | Ok -> true)
