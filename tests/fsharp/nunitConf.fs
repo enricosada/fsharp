@@ -230,10 +230,7 @@ module Command =
 
         let inputWriter sources (writer: StreamWriter) =
             let pipeFile name = async {
-                let path =
-                    if Path.IsPathRooted(name) then name
-                    else Path.Combine(dir,name) |> Path.GetFullPath
-
+                let path = Commands.getfullpath dir name
                 use reader = File.OpenRead (path)
                 use ms = new MemoryStream()
                 do! reader.CopyToAsync (ms) |> (Async.AwaitIAsyncResult >> Async.Ignore)

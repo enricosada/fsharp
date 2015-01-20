@@ -175,7 +175,7 @@ type AttemptBuilder() =
 let processor = new AttemptBuilder()
 
 
-let log format = Printf.ksprintf (fun s -> printfn "%s" s) format
+let log format = Printf.ksprintf (printfn "%s") format
 
 let inline (/) a b = Path.Combine(a,b)
 
