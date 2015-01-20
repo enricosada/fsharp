@@ -27,8 +27,8 @@ let internal singleNegTest' (cfg: TestConfig) workDir testname = processor {
     ignore "already checked"
 
     let fsdiff a = 
-        let exec = Command.exec workDir cfg.EnvironmentVariables { Output = Inherit; Input = None }
-        Commands.fsdiff exec cfg.FSDIFF true a >> checkResult
+        let exec p = Command.exec workDir cfg.EnvironmentVariables { Output = Inherit; Input = None } p >> checkResult
+        Commands.fsdiff exec cfg.FSDIFF true a
     let envOrFail key =
         cfg.EnvironmentVariables 
         |> Map.tryFind key 

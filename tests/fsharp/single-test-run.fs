@@ -84,12 +84,12 @@ let private singleTestRun' cfg testDir =
     // REM THE TESTS
     // REM =========================================
 
-    let exec = Command.exec testDir cfg.EnvironmentVariables { Output = Inherit; Input = None }
+    let exec p = Command.exec testDir cfg.EnvironmentVariables { Output = Inherit; Input = None } p >> checkResult
 
-    let clix exe = exec exe >> checkResult
-    let fsi args = Commands.fsi exec cfg.FSI args >> checkResult
-    let ``exec <`` l = Command.exec testDir cfg.EnvironmentVariables { Output = Inherit; Input = Some(RedirectInput(l)) }
-    let ``fsi <`` = Printf.ksprintf (fun flags l -> Commands.fsi (``exec <`` l) cfg.FSI flags [] |> checkResult)
+    let clix exe = exec exe
+    let fsi = Printf.ksprintf (fun flags l -> Commands.fsi exec cfg.FSI flags l)
+    let ``exec <`` l p = Command.exec testDir cfg.EnvironmentVariables { Output = Inherit; Input = Some(RedirectInput(l)) } p >> checkResult
+    let ``fsi <`` = Printf.ksprintf (fun flags l -> Commands.fsi (``exec <`` l) cfg.FSI flags [])
 
     let fsi_flags = cfg.fsi_flags
 
@@ -169,7 +169,7 @@ let private singleTestRun' cfg testDir =
         // if exist test.ok (del /f /q test.ok)
         use testOkFile = createTestOkFile () 
         // %CLIX% "%FSI%" %fsi_flags% %sources% && (
-        do! fsi fsi_flags sources
+        do! fsi "%s" fsi_flags sources
         // dir test.ok > NUL 2>&1 ) || (
         // @echo FSI_FILE failed
         // set ERRORMSG=%ERRORMSG% FSI_FILE failed;

@@ -14,10 +14,6 @@ let testContext () =
     { Directory = NUnit.Framework.TestContext.CurrentContext.Test.Properties.["DIRECTORY"] :?> string;
       Config = suiteHelpers.Value }
 
-let fsc exec exePath flags = Commands.fsc exec exePath flags >> checkResult
-let fsi exec exePath flags = Commands.fsi exec exePath flags >> checkResult
-let csc exec exePath flags = Commands.csc exec exePath flags >> checkResult
-
 module Access =
     let permutations =
         FSharpTestSuite.allPermutation
@@ -93,10 +89,10 @@ module Events =
     open PlatformHelpers
 
     let build cfg dir = processor {
-        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None}
-        let fsc = Printf.ksprintf (fsc exec cfg.FSC)
-        let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
-        let csc flagsFormat = Printf.ksprintf (csc exec cfg.CSC) flagsFormat
+        let exec p = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None} p >> checkResult
+        let fsc = Printf.ksprintf (Commands.fsc exec cfg.FSC)
+        let peverify = Commands.peverify exec cfg.PEVERIFY
+        let csc = Printf.ksprintf (Commands.csc exec cfg.CSC)
 
         // "%FSC%" %fsc_flags% -a -o:test.dll -g test.fs
         do! fsc "%s -a -o:test.dll -g" cfg.fsc_flags ["test.fs"]
@@ -112,9 +108,9 @@ module Events =
         }
 
     let run cfg dir = processor {
-        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None}
-        let clix exe = exec exe >> checkResult
-        let fsi = Printf.ksprintf (fsi exec cfg.FSI)
+        let exec p = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None} p >> checkResult
+        let clix exe = exec exe
+        let fsi = Printf.ksprintf (Commands.fsi exec cfg.FSI)
 
         use testOkFile = FileGuard.create (dir/"test.ok")
 
@@ -159,8 +155,8 @@ module ``FSI-Shadowcopy`` =
     let ``shadowcopy disabled`` (flags: string) = check  (processor {
         let { Directory = dir; Config = cfg } = testContext ()
 
-        let ``exec <`` l = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = Some(RedirectInput(l)) }
-        let ``fsi <`` = Printf.ksprintf (fun flags l -> fsi (``exec <`` l) cfg.FSI flags [])
+        let ``exec <`` l p = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = Some(RedirectInput(l)) } p >> checkResult
+        let ``fsi <`` = Printf.ksprintf (fun flags l -> Commands.fsi (``exec <`` l) cfg.FSI flags [])
 
         // if exist test1.ok (del /f /q test1.ok)
         use testOkFile = FileGuard.create (dir/"test1.ok")
@@ -181,8 +177,8 @@ module ``FSI-Shadowcopy`` =
     let ``shadowcopy enabled`` (flags: string) = check (processor {
         let { Directory = dir; Config = cfg } = testContext ()
 
-        let ``exec <`` l = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = Some(RedirectInput(l)) }
-        let ``fsi <`` = Printf.ksprintf (fun flags l -> fsi (``exec <`` l) cfg.FSI flags [])
+        let ``exec <`` l p = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = Some(RedirectInput(l)) } p >> checkResult
+        let ``fsi <`` = Printf.ksprintf (fun flags l -> Commands.fsi (``exec <`` l) cfg.FSI flags [])
 
         // if exist test2.ok (del /f /q test2.ok)
         use testOkFile = FileGuard.create (dir/"test2.ok")
@@ -204,10 +200,10 @@ module Forwarders =
     let forwarders () = check (processor {
         let { Directory = dir; Config = cfg } = testContext ()
 
-        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; }
-        let fsc = Printf.ksprintf (fsc exec cfg.FSC)
-        let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
-        let csc = Printf.ksprintf (csc exec cfg.CSC)
+        let exec p = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; } p >> checkResult
+        let fsc = Printf.ksprintf (Commands.fsc exec cfg.FSC)
+        let peverify = Commands.peverify exec cfg.PEVERIFY
+        let csc = Printf.ksprintf (Commands.csc exec cfg.CSC)
         let copy_y f = Commands.copy_y dir f >> checkResult
         let mkdir = Commands.mkdir_p dir
 
@@ -271,10 +267,10 @@ module Forwarders =
 module FsFromCs = 
 
     let build cfg dir = processor {
-        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; }
-        let fsc = Printf.ksprintf (fsc exec cfg.FSC)
-        let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
-        let csc = Printf.ksprintf (csc exec cfg.CSC)
+        let exec p = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; } p >> checkResult
+        let fsc = Printf.ksprintf (Commands.fsc exec cfg.FSC)
+        let peverify = Commands.peverify exec cfg.PEVERIFY
+        let csc = Printf.ksprintf (Commands.csc exec cfg.CSC)
         let fsc_flags = cfg.fsc_flags
 
         // "%FSC%" %fsc_flags% -a --doc:lib.xml -o:lib.dll -g lib.ml
@@ -298,8 +294,8 @@ module FsFromCs =
         }
 
     let run cfg dir = processor {
-        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; }
-        let clix exe = exec exe >> checkResult
+        let exec p = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; } p >> checkResult
+        let clix exe = exec exe
 
         // %CLIX% .\test.exe
         do! clix ("."/"test.exe") ""
@@ -324,10 +320,10 @@ module FsFromCs =
 module QueriesCustomQueryOps = 
 
     let build cfg dir = processor {
-        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; }
-        let fsc = Printf.ksprintf (fsc exec cfg.FSC)
-        let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
-        let csc = Printf.ksprintf (csc exec cfg.CSC)
+        let exec p = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; } p >> checkResult
+        let fsc = Printf.ksprintf (Commands.fsc exec cfg.FSC)
+        let peverify = Commands.peverify exec cfg.PEVERIFY
+        let csc = Printf.ksprintf (Commands.csc exec cfg.CSC)
         let fsc_flags = cfg.fsc_flags
 
         // "%FSC%" %fsc_flags% -o:test.exe -g test.fsx
@@ -348,9 +344,9 @@ module QueriesCustomQueryOps =
         }
 
     let run cfg dir = processor {
-        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; }
-        let clix exe = exec exe >> checkResult
-        let fsi = Printf.ksprintf (fsi exec cfg.FSI)
+        let exec p = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; } p >> checkResult
+        let clix exe = exec exe
+        let fsi = Printf.ksprintf (Commands.fsi exec cfg.FSI)
 
         // echo TestC
         log "TestC"
@@ -421,14 +417,16 @@ module Printing =
     let printing flag diffFile expectedFile = check (processor {
         let { Directory = dir; Config = cfg } = testContext ()
 
-        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; }
-        let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
+        let exec p = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; } p >> checkResult
+        let peverify = Commands.peverify exec cfg.PEVERIFY
         let copy from' = Commands.copy_y dir from' >> checkResult
 
         let ``fsi <a >b 2>&1`` =
             // "%FSI%" %fsc_flags_errors_ok%  --nologo                                    <test.fsx >z.raw.output.test.default.txt 2>&1
-            let ``exec <a >b 2>&1`` inFile outFile = Command.exec dir cfg.EnvironmentVariables { Output = OutputAndError(Overwrite(outFile)); Input = Some(RedirectInput([ inFile ])); }
-            Printf.ksprintf (fun flags in' out -> Commands.fsi (``exec <a >b 2>&1`` in' out) cfg.FSI flags [] |> checkResult)
+            let ``exec <a >b 2>&1`` inFile outFile p = 
+                Command.exec dir cfg.EnvironmentVariables { Output = OutputAndError(Overwrite(outFile)); Input = Some(RedirectInput([ inFile ])); } p 
+                >> checkResult
+            Printf.ksprintf (fun flags in' out -> Commands.fsi (``exec <a >b 2>&1`` in' out) cfg.FSI flags [])
         
         // rem recall  >fred.txt 2>&1 merges stderr into the stdout redirect
         // rem however 2>&1  >fred.txt did not seem to do it.
@@ -443,9 +441,9 @@ module Printing =
         //     exit /b 1
         // )
         let prdiff a b = 
-            let ``exec >`` f = Command.exec dir cfg.EnvironmentVariables { Output = Output(Overwrite(f)); Input = None}
+            let ``exec >`` f p = Command.exec dir cfg.EnvironmentVariables { Output = Output(Overwrite(f)); Input = None} p >> checkResult
             let diffFile = Path.ChangeExtension(a, ".diff")
-            Commands.fsdiff (``exec >`` (dir/diffFile)) cfg.FSDIFF false a b |> checkResult
+            Commands.fsdiff (``exec >`` (dir/diffFile)) cfg.FSDIFF false a b
 
         let fsc_flags_errors_ok = ""
 
@@ -520,11 +518,11 @@ module Printing =
 module Quotes = 
 
     let build cfg dir = processor {
-        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; }
-        let fsc = Printf.ksprintf (fsc exec cfg.FSC)
-        let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
+        let exec p = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; } p >> checkResult
+        let fsc = Printf.ksprintf (Commands.fsc exec cfg.FSC)
+        let peverify = Commands.peverify exec cfg.PEVERIFY
         let fsc_flags = cfg.fsc_flags
-        let csc = Printf.ksprintf (csc exec cfg.CSC)
+        let csc = Printf.ksprintf (Commands.csc exec cfg.CSC)
 
         //missing csc
         do! csc """/nologo  /target:library /out:cslib.dll""" ["cslib.cs"]
@@ -544,9 +542,9 @@ module Quotes =
         }
 
     let run cfg dir = processor {
-        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; }
-        let clix exe = exec exe >> checkResult
-        let fsi = Printf.ksprintf (fsi exec cfg.FSI)
+        let exec p = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; } p >> checkResult
+        let clix exe = exec exe
+        let fsi = Printf.ksprintf (Commands.fsi exec cfg.FSI)
 
         do! processor {
             // if exist test.ok (del /f /q test.ok)
@@ -619,9 +617,9 @@ module Parsing =
     let parsing () = check  (processor {
         let { Directory = dir; Config = cfg } = testContext ()
         
-        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; }
-        let fsc = Printf.ksprintf (fsc exec cfg.FSC)
-        let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
+        let exec p = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; } p >> checkResult
+        let fsc = Printf.ksprintf (Commands.fsc exec cfg.FSC)
+        let peverify = Commands.peverify exec cfg.PEVERIFY
         let fsc_flags = cfg.fsc_flags
 
         // "%FSC%" %fsc_flags% -a -o:crlf.dll -g crlf.ml
@@ -639,8 +637,8 @@ module Unicode =
 
     let build cfg dir = processor {
         
-        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; }
-        let fsc = Printf.ksprintf (fsc exec cfg.FSC)
+        let exec p = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; } p >> checkResult
+        let fsc = Printf.ksprintf (Commands.fsc exec cfg.FSC)
         let fsc_flags = cfg.fsc_flags
 
         // REM just checking the files actually parse/compile for now....
@@ -668,8 +666,8 @@ module Unicode =
         }
 
     let run cfg dir = processor {
-        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; }
-        let fsi = Printf.ksprintf (fsi exec cfg.FSI)
+        let exec p = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; } p >> checkResult
+        let fsi = Printf.ksprintf (Commands.fsi exec cfg.FSI)
         let fsi_flags = cfg.fsi_flags
 
         // if exist test.ok (del /f /q test.ok)

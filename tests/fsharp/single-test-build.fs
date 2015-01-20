@@ -95,14 +95,14 @@ let singleTestBuild cfg testDir =
     //)
     ignore "permutations useless because build type is an input"
 
-    let exec = Command.exec testDir cfg.EnvironmentVariables { Output = Inherit; Input = None }
+    let exec p = Command.exec testDir cfg.EnvironmentVariables { Output = Inherit; Input = None } p >> checkResult
 
     let echo_tofile = Commands.echo_tofile testDir
     let copy_y f = Commands.copy_y testDir f >> checkResult
     let type_append_tofile = Commands.type_append_tofile testDir
-    let fsc = Printf.ksprintf (fun flags -> Commands.fsc exec cfg.FSC flags >> checkResult)
+    let fsc = Printf.ksprintf (fun flags -> Commands.fsc exec cfg.FSC flags)
     let fsc_flags = cfg.fsc_flags
-    let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
+    let peverify = Commands.peverify exec cfg.PEVERIFY
     let ``echo._tofile`` = Commands.``echo._tofile`` testDir
 
     //:Ok
