@@ -16,7 +16,6 @@ let testContext () =
 
 let fsc exec exePath flags = Commands.fsc exec exePath flags >> checkResult
 let fsi exec exePath flags = Commands.fsi exec exePath flags >> checkResult
-let fsiIn exec exePath flags = Commands.fsiIn exec exePath flags >> checkResult
 let csc exec exePath flags = Commands.csc exec exePath flags >> checkResult
 
 module Access =
@@ -94,10 +93,7 @@ module Events =
     open PlatformHelpers
 
     let build cfg dir = processor {
-        let exec path args =
-            log "%s %s" path args
-            use toLog = redirectToLog ()
-            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
+        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None}
         let fsc = Printf.ksprintf (fsc exec cfg.FSC)
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
         let csc flagsFormat = Printf.ksprintf (csc exec cfg.CSC) flagsFormat
@@ -116,10 +112,7 @@ module Events =
         }
 
     let run cfg dir = processor {
-        let exec path args = 
-            log "%s %s" path args
-            use toLog = redirectToLog ()
-            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
+        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None}
         let clix exe = exec exe >> checkResult
         let fsi = Printf.ksprintf (fsi exec cfg.FSI)
 
@@ -156,10 +149,6 @@ module ``FSI-Shadowcopy`` =
 
     open PlatformHelpers
 
-    let execIn dir envVars input = 
-        use toLog = redirectToLog ()
-        Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = Some input; } dir envVars
-
     let test1Data = 
         // "%FSI%" %fsi_flags%                          < test1.fsx
         // "%FSI%" %fsi_flags%  --shadowcopyreferences- < test1.fsx
@@ -169,12 +158,14 @@ module ``FSI-Shadowcopy`` =
     [<Test; TestCaseSource("test1Data")>]
     let ``shadowcopy disabled`` (flags: string) = check  (processor {
         let { Directory = dir; Config = cfg } = testContext ()
-        let fsiIn = Printf.ksprintf (fsiIn (execIn dir cfg.EnvironmentVariables) cfg.FSI)
+
+        let ``exec <`` l = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = Some(RedirectInput(l)) }
+        let ``fsi <`` = Printf.ksprintf (fun flags l -> fsi (``exec <`` l) cfg.FSI flags [])
 
         // if exist test1.ok (del /f /q test1.ok)
         use testOkFile = FileGuard.create (dir/"test1.ok")
 
-        do! fsiIn "%s %s" cfg.fsi_flags flags [dir/"test1.fsx"]
+        do! ``fsi <`` "%s %s" cfg.fsi_flags flags [dir/"test1.fsx"]
 
         // if NOT EXIST test1.ok goto SetError
         do! testOkFile |> NUnitConf.checkGuardExists
@@ -189,13 +180,15 @@ module ``FSI-Shadowcopy`` =
     [<Test; TestCaseSource("test2Data")>]
     let ``shadowcopy enabled`` (flags: string) = check (processor {
         let { Directory = dir; Config = cfg } = testContext ()
-        let fsiIn = Printf.ksprintf (fsiIn (execIn dir cfg.EnvironmentVariables) cfg.FSI)
+
+        let ``exec <`` l = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = Some(RedirectInput(l)) }
+        let ``fsi <`` = Printf.ksprintf (fun flags l -> fsi (``exec <`` l) cfg.FSI flags [])
 
         // if exist test2.ok (del /f /q test2.ok)
         use testOkFile = FileGuard.create (dir/"test2.ok")
 
         // "%FSI%" %fsi_flags%  /shadowcopyreferences+  < test2.fsx
-        do! fsiIn "%s %s" cfg.fsi_flags flags [dir/"test2.fsx"]
+        do! ``fsi <`` "%s %s" cfg.fsi_flags flags [dir/"test2.fsx"]
 
         // if NOT EXIST test2.ok goto SetError
         do! testOkFile |> NUnitConf.checkGuardExists
@@ -211,10 +204,7 @@ module Forwarders =
     let forwarders () = check (processor {
         let { Directory = dir; Config = cfg } = testContext ()
 
-        let exec path args =
-            log "%s %s" path args
-            use toLog = redirectToLog ()
-            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
+        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; }
         let fsc = Printf.ksprintf (fsc exec cfg.FSC)
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
         let csc = Printf.ksprintf (csc exec cfg.CSC)
@@ -281,10 +271,7 @@ module Forwarders =
 module FsFromCs = 
 
     let build cfg dir = processor {
-        let exec path args =
-            log "%s %s" path args
-            use toLog = redirectToLog ()
-            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
+        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; }
         let fsc = Printf.ksprintf (fsc exec cfg.FSC)
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
         let csc = Printf.ksprintf (csc exec cfg.CSC)
@@ -311,10 +298,7 @@ module FsFromCs =
         }
 
     let run cfg dir = processor {
-        let exec path args =
-            log "%s %s" path args
-            use toLog = redirectToLog ()
-            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
+        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; }
         let clix exe = exec exe >> checkResult
 
         // %CLIX% .\test.exe
@@ -340,10 +324,7 @@ module FsFromCs =
 module QueriesCustomQueryOps = 
 
     let build cfg dir = processor {
-        let exec path args =
-            log "%s %s" path args
-            use toLog = redirectToLog ()
-            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
+        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; }
         let fsc = Printf.ksprintf (fsc exec cfg.FSC)
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
         let csc = Printf.ksprintf (csc exec cfg.CSC)
@@ -367,10 +348,7 @@ module QueriesCustomQueryOps =
         }
 
     let run cfg dir = processor {
-        let exec path args =
-            log "%s %s" path args
-            use toLog = redirectToLog ()
-            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
+        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; }
         let clix exe = exec exe >> checkResult
         let fsi = Printf.ksprintf (fsi exec cfg.FSI)
 
@@ -443,21 +421,14 @@ module Printing =
     let printing flag diffFile expectedFile = check (processor {
         let { Directory = dir; Config = cfg } = testContext ()
 
-        let exec path args =
-            log "%s %s" path args
-            use toLog = redirectToLog ()
-            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
+        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; }
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
         let copy from' = Commands.copy_y dir from' >> checkResult
 
-        let fsiInAndRedirectOutErr flags inputFile outErrRedirectedTo =
-            let exec' input path args =
-                log "%s %s <%s >%s 2>&1" path args inputFile outErrRedirectedTo
-                use writer = new StreamWriter(outErrRedirectedTo, false)
-                use outFile = redirectTo writer
-                Process.exec { RedirectOutput = Some outFile.Post; RedirectError = Some outFile.Post; RedirectInput = Some input; } dir cfg.EnvironmentVariables path args
+        let ``fsi <a >b 2>&1`` =
             // "%FSI%" %fsc_flags_errors_ok%  --nologo                                    <test.fsx >z.raw.output.test.default.txt 2>&1
-            Commands.fsiIn exec' cfg.FSI flags [ inputFile ] |> checkResult
+            let ``exec <a >b 2>&1`` inFile outFile = Command.exec dir cfg.EnvironmentVariables { Output = OutputAndError(Overwrite(outFile)); Input = Some(RedirectInput([ inFile ])); }
+            Printf.ksprintf (fun flags in' out -> Commands.fsi (``exec <a >b 2>&1`` in' out) cfg.FSI flags [] |> checkResult)
         
         // rem recall  >fred.txt 2>&1 merges stderr into the stdout redirect
         // rem however 2>&1  >fred.txt did not seem to do it.
@@ -472,14 +443,9 @@ module Printing =
         //     exit /b 1
         // )
         let prdiff a b = 
+            let ``exec >`` f = Command.exec dir cfg.EnvironmentVariables { Output = Output(Overwrite(f)); Input = None}
             let diffFile = Path.ChangeExtension(a, ".diff")
-            let exec' path args =
-                log "%s %s >%s" path args diffFile
-                use writer = new StreamWriter(dir/diffFile, false)
-                use outFile = redirectTo writer
-                use toLog = redirectToLog ()
-                Process.exec { RedirectOutput = Some outFile.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
-            Commands.fsdiff exec' cfg.FSDIFF false a b |> checkResult
+            Commands.fsdiff (``exec >`` (dir/diffFile)) cfg.FSDIFF false a b |> checkResult
 
         let fsc_flags_errors_ok = ""
 
@@ -494,7 +460,7 @@ module Printing =
         // echo == Quiet
         // "%FSI%" %fsc_flags_errors_ok% --nologo --quiet                              <test.fsx >z.raw.output.test.quiet.txt   2>&1
         let rawFile = Path.GetTempFileName()
-        do! fsiInAndRedirectOutErr (sprintf "%s --nologo %s" fsc_flags_errors_ok flag) (dir/"test.fsx") rawFile
+        do! ``fsi <a >b 2>&1`` "%s --nologo %s" fsc_flags_errors_ok flag (dir/"test.fsx") rawFile
 
         // REM REVIEW: want to normalise CWD paths, not suppress them.
         let ``findstr /v`` text = Seq.filter (fun (s: string) -> not <| s.Contains(text))
@@ -554,10 +520,7 @@ module Printing =
 module Quotes = 
 
     let build cfg dir = processor {
-        let exec path args =
-            log "%s %s" path args
-            use toLog = redirectToLog ()
-            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
+        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; }
         let fsc = Printf.ksprintf (fsc exec cfg.FSC)
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
         let fsc_flags = cfg.fsc_flags
@@ -581,10 +544,7 @@ module Quotes =
         }
 
     let run cfg dir = processor {
-        let exec path args =
-            log "%s %s" path args
-            use toLog = redirectToLog ()
-            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
+        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; }
         let clix exe = exec exe >> checkResult
         let fsi = Printf.ksprintf (fsi exec cfg.FSI)
 
@@ -659,10 +619,7 @@ module Parsing =
     let parsing () = check  (processor {
         let { Directory = dir; Config = cfg } = testContext ()
         
-        let exec path args =
-            log "%s %s" path args
-            use toLog = redirectToLog ()
-            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
+        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; }
         let fsc = Printf.ksprintf (fsc exec cfg.FSC)
         let peverify = Commands.peverify exec cfg.PEVERIFY >> checkResult
         let fsc_flags = cfg.fsc_flags
@@ -680,17 +637,11 @@ module Parsing =
 
 module Unicode = 
 
-    let build cfg dir p = processor {
+    let build cfg dir = processor {
         
-        let exec path args =
-            log "%s %s" path args
-            use toLog = redirectToLog ()
-            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
+        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; }
         let fsc = Printf.ksprintf (fsc exec cfg.FSC)
         let fsc_flags = cfg.fsc_flags
-
-        // call %~d0%~p0..\..\single-test-build.bat
-        do! SingleTestBuild.singleTestBuild cfg dir p
 
         // REM just checking the files actually parse/compile for now....
 
@@ -716,11 +667,8 @@ module Unicode =
         do! fsc "%s -a -o:kanji-unicode-utf8-withsig-codepage-65001.dll -g" fsc_flags ["kanji-unicode-utf8-withsig-codepage-65001.fs"]
         }
 
-    let run cfg dir p = processor {
-        let exec path args =
-            log "%s %s" path args
-            use toLog = redirectToLog ()
-            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } dir cfg.EnvironmentVariables path args
+    let run cfg dir = processor {
+        let exec = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; }
         let fsi = Printf.ksprintf (fsi exec cfg.FSI)
         let fsi_flags = cfg.fsi_flags
 
@@ -748,19 +696,30 @@ module Unicode =
         ignore "unused"
         // "%FSI%" %fsi_flags% --utf8output kanji-unicode-utf16.fs
         do! fsi "%s --utf8output" fsi_flags ["kanji-unicode-utf16.fs"]
-
-        // call %~d0%~p0..\..\single-test-run.bat
-        do! SingleTestRun.singleTestRun cfg dir p
         }
+
+
+    let testData = [ (new TestCaseData()) |> setTestDataInfo "unicode" ]
+
+    [<Test; TestCaseSource("testData")>]
+    let unicode () = check  (processor {
+        let { Directory = dir; Config = cfg } = testContext ()
+
+        do! build cfg dir  
+        do! run cfg dir
+        }) 
 
     let permutations = 
         FSharpTestSuite.allPermutation
         |> List.map (fun p -> (new TestCaseData (p)).SetCategory(sprintf "%A" p) |> setTestDataInfo "unicode")
 
     [<Test; TestCaseSource("permutations")>]
-    let unicode p = check  (processor {
+    let unicode2 p = check  (processor {
         let { Directory = dir; Config = cfg } = testContext ()
 
-        do! build cfg dir p        
-        do! run cfg dir p
+        // call %~d0%~p0..\..\single-test-build.bat
+        do! SingleTestBuild.singleTestBuild cfg dir p        
+
+        // call %~d0%~p0..\..\single-test-run.bat
+        do! SingleTestRun.singleTestRun cfg dir p
         }) 

@@ -70,24 +70,6 @@ let csc exec cscExe flags srcFiles =
 let fsi exec fsiExe flags sources =
     exec fsiExe (sprintf "%s %s" flags (sources |> Seq.ofList |> String.concat " "))
 
-let fsiIn exec fsiExe flags sources =
-    let inputWriter (writer: StreamWriter) =
-        let pipeFile name = async {
-            use reader = File.OpenRead name
-            use ms = new MemoryStream()
-            do! reader.CopyToAsync (ms) |> (Async.AwaitIAsyncResult >> Async.Ignore)
-            ms.Position <- 0L
-            try
-                do! ms.CopyToAsync(writer.BaseStream) |> (Async.AwaitIAsyncResult >> Async.Ignore)
-                do! writer.FlushAsync() |> (Async.AwaitIAsyncResult >> Async.Ignore)
-            with
-            | :? System.IO.IOException as ex -> //input closed is ok if process is closed
-                ()
-            }
-        sources |> List.iter (pipeFile >> Async.RunSynchronously)
-
-    exec inputWriter fsiExe flags
-
 let peverify exec peverifyExe path =
     exec peverifyExe path
 

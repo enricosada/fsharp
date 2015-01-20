@@ -197,3 +197,87 @@ type TestRunContext = { Directory: string; Config: TestConfig }
 
 let check (f: Attempt<_,_>) =
     f |> Attempt.Run |> checkTestResult
+
+
+
+type RedirectInfo = { Output: RedirectTo; Input: RedirectFrom option }
+and RedirectTo =
+    | Inherit
+    | Output of RedirectToType
+    | OutputAndError of RedirectToType
+    | Error of RedirectToType
+and RedirectToType = Overwrite of FilePath | Append of FilePath
+and RedirectFrom = RedirectInput of FilePath list
+
+module Command =
+
+    let logExec dir path args redirect =
+        let inF =
+            function
+            | None -> ""
+            | Some(RedirectInput l) -> sprintf " <%s" (l |> Seq.ofList |> String.concat " ")
+        let redirectType = function Overwrite x -> sprintf ">%s" x | Append x -> sprintf ">>%s" x
+        let outF =
+            function
+            | Inherit -> ""
+            | Output r-> sprintf " 1%s" (redirectType r)
+            | OutputAndError r -> sprintf " 1%s 2>&1" (redirectType r)
+            | Error r -> sprintf " 2%s" (redirectType r)
+        sprintf "%s%s%s%s" path (match args with "" -> "" | x -> " " + x) (inF redirect.Input) (outF redirect.Output)
+
+    let exec dir envVars redirect path args =
+        let { Output = o; Input = i} = redirect
+
+        let inputWriter sources (writer: StreamWriter) =
+            let pipeFile name = async {
+                let path =
+                    if Path.IsPathRooted(name) then name
+                    else Path.Combine(dir,name) |> Path.GetFullPath
+
+                use reader = File.OpenRead (path)
+                use ms = new MemoryStream()
+                do! reader.CopyToAsync (ms) |> (Async.AwaitIAsyncResult >> Async.Ignore)
+                ms.Position <- 0L
+                try
+                    do! ms.CopyToAsync(writer.BaseStream) |> (Async.AwaitIAsyncResult >> Async.Ignore)
+                    do! writer.FlushAsync() |> (Async.AwaitIAsyncResult >> Async.Ignore)
+                with
+                | :? System.IO.IOException as ex -> //input closed is ok if process is closed
+                    ()
+                }
+            sources |> List.iter (pipeFile >> Async.RunSynchronously)
+
+        let inF fCont cmdArgs =
+            match i with
+            | None -> fCont cmdArgs
+            | Some(RedirectInput l) -> fCont { cmdArgs with RedirectInput = Some (inputWriter l) }
+
+        let openWrite = function Append p -> new StreamWriter(p,true) | Overwrite p -> new StreamWriter(p,false)
+
+        let outF fCont cmdArgs =
+            match o with
+            | RedirectTo.Inherit ->  
+                use toLog = redirectToLog ()
+                fCont { cmdArgs with RedirectOutput = Some (toLog.Post); RedirectError = Some (toLog.Post) }
+            | Output r ->
+                use writer = openWrite r
+                use outFile = redirectTo writer
+                use toLog = redirectToLog ()
+                fCont { cmdArgs with RedirectOutput = Some (outFile.Post); RedirectError = Some (toLog.Post) }
+            | OutputAndError r ->
+                use writer = openWrite r
+                use outFile = redirectTo writer
+                fCont { cmdArgs with RedirectOutput = Some (outFile.Post); RedirectError = Some (outFile.Post) }
+            | Error r ->
+                use writer = openWrite r
+                use outFile = redirectTo writer
+                use toLog = redirectToLog ()
+                fCont { cmdArgs with RedirectOutput = Some (toLog.Post); RedirectError = Some (outFile.Post) }
+            
+        let exec cmdArgs =
+            log "%s" (logExec dir path args redirect)
+            Process.exec cmdArgs dir envVars path args
+
+        { RedirectOutput = None; RedirectError = None; RedirectInput = None }
+        |> (outF (inF exec))
+    

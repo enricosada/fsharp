@@ -5,6 +5,7 @@ open System.IO
 open TestConfig
 open NUnit.Framework
 open PlatformHelpers
+open NUnitConf
 
 let private singleTestRun' cfg testDir =
 
@@ -83,25 +84,12 @@ let private singleTestRun' cfg testDir =
     // REM THE TESTS
     // REM =========================================
 
-    let exec exe args = 
-        log "%s %s" exe args
-        use toLog = redirectToLog ()
-        Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } testDir cfg.EnvironmentVariables exe args
+    let exec = Command.exec testDir cfg.EnvironmentVariables { Output = Inherit; Input = None }
 
     let clix exe = exec exe >> checkResult
     let fsi args = Commands.fsi exec cfg.FSI args >> checkResult
-    let fsiIn flags sources =
-        log "%s %s < %s" cfg.FSI flags (sources |> Seq.ofList |> String.concat " ")
-        let execIn input = 
-            use toLog = redirectToLog ()
-            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = Some input; } testDir cfg.EnvironmentVariables
-        let inputs = sources |> List.map fullpath
-        inputs
-        |> List.map (fun p -> (p, p |> fileExists))
-        |> List.tryPick (function p, None -> Some p | _, Some _ -> None)
-        |> function
-           | Some p -> NUnitConf.genericError (sprintf "redirected file '%s' not found" p)
-           | None -> (fun () -> Commands.fsiIn execIn cfg.FSI flags inputs |> checkResult)
+    let ``exec <`` l = Command.exec testDir cfg.EnvironmentVariables { Output = Inherit; Input = Some(RedirectInput(l)) }
+    let ``fsi <`` = Printf.ksprintf (fun flags l -> Commands.fsi (``exec <`` l) cfg.FSI flags [] |> checkResult)
 
     let fsi_flags = cfg.fsi_flags
 
@@ -127,7 +115,7 @@ let private singleTestRun' cfg testDir =
         // if exist test.ok (del /f /q test.ok)
         use testOkFile = createTestOkFile () 
         // %CLIX% "%FSI%" %fsi_flags% < %sources% && (
-        do! fsiIn fsi_flags sources
+        do! ``fsi <`` "%s" fsi_flags sources
         // dir test.ok > NUL 2>&1 ) || (
         // @echo FSI_STDIN failed;
         // set ERRORMSG=%ERRORMSG% FSI_STDIN failed;
@@ -145,7 +133,7 @@ let private singleTestRun' cfg testDir =
         // if exist test.ok (del /f /q test.ok)
         use testOkFile = createTestOkFile () 
         // %CLIX% "%FSI%" %fsi_flags% --optimize < %sources% && (
-        do! fsiIn (sprintf "%s --optimize" fsi_flags) sources
+        do! ``fsi <`` "%s --optimize" fsi_flags sources
         // dir test.ok > NUL 2>&1 ) || (
         // @echo FSI_STDIN_OPT failed
         // set ERRORMSG=%ERRORMSG% FSI_STDIN_OPT failed;
@@ -163,7 +151,7 @@ let private singleTestRun' cfg testDir =
         // if exist test.ok (del /f /q test.ok)
         use testOkFile = createTestOkFile () 
         // %CLIX% "%FSI%" %fsi_flags% --gui < %sources% && (
-        do! fsiIn (sprintf "%s --gui" fsi_flags) sources
+        do! ``fsi <`` "%s --gui" fsi_flags sources
         // dir test.ok > NUL 2>&1 ) || (
         // @echo FSI_STDIN_GUI failed;
         // set ERRORMSG=%ERRORMSG% FSI_STDIN_GUI failed;

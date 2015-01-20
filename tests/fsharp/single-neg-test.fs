@@ -5,6 +5,7 @@ open System.IO
 open TestConfig
 open NUnit.Framework
 open PlatformHelpers
+open NUnitConf
 
 let internal singleNegTest' (cfg: TestConfig) workDir testname = processor {
 
@@ -26,10 +27,7 @@ let internal singleNegTest' (cfg: TestConfig) workDir testname = processor {
     ignore "already checked"
 
     let fsdiff a = 
-        let exec path args =
-            log "%s %s" path args
-            use toLog = redirectToLog ()
-            Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toLog.Post; RedirectInput = None; } workDir cfg.EnvironmentVariables path args
+        let exec = Command.exec workDir cfg.EnvironmentVariables { Output = Inherit; Input = None }
         Commands.fsdiff exec cfg.FSDIFF true a >> checkResult
     let envOrFail key =
         cfg.EnvironmentVariables 
@@ -98,23 +96,18 @@ let internal singleNegTest' (cfg: TestConfig) workDir testname = processor {
         // echo Negative typechecker testing: %testname%
         log "Negative typechecker testing: %s" testname
 
-        let fsc' args sources errPath = 
+        let fsc' = 
             // "%FSC%" %fsc_flags% --vserrors --warnaserror --nologo --maxerrors:10000 -a -o:%testname%.dll  %sources% 2> %testname%.err
             // @if NOT ERRORLEVEL 1 (
             //     set ERRORMSG=%ERRORMSG% FSC passed unexpectedly for  %sources%;
             //     goto SetError
             // )
-            let redirectErr path args =
-                log "%s %s 2> %s" path args errPath
-                use errFile = new StreamWriter(errPath |> fullpath, false)
-                use toFile = redirectTo errFile
-                use toLog = redirectToLog ()
-                Process.exec { RedirectOutput = Some toLog.Post; RedirectError = Some toFile.Post; RedirectInput = None; } workDir cfg.EnvironmentVariables path args
-
-            Commands.fsc redirectErr cfg.FSC args sources
-            |> function 
+            let ``exec 2>`` errPath = Command.exec workDir cfg.EnvironmentVariables { Output = Error(Overwrite(errPath |> fullpath)); Input = None }
+            let checkErrorLevel1 = function 
                 | CmdResult.ErrorLevel 1 -> Success
                 | CmdResult.Success | CmdResult.ErrorLevel _ -> NUnitConf.genericError (sprintf "FSC passed unexpectedly for  %A" sources)
+
+            Printf.ksprintf (fun flags sources errPath -> Commands.fsc (``exec 2>`` errPath) cfg.FSC flags sources |> checkErrorLevel1)
         
         let fsdiff a b = processor {
             let out = new ResizeArray<string>()
@@ -127,7 +120,7 @@ let internal singleNegTest' (cfg: TestConfig) workDir testname = processor {
             }
 
         // "%FSC%" %fsc_flags% --vserrors --warnaserror --nologo --maxerrors:10000 -a -o:%testname%.dll  %sources% 2> %testname%.err
-        do! fsc' (sprintf """%s --vserrors --warnaserror --nologo --maxerrors:10000 -a -o:%s.dll""" fsc_flags testname) sources (sprintf "%s.err" testname)
+        do! fsc' """%s --vserrors --warnaserror --nologo --maxerrors:10000 -a -o:%s.dll""" fsc_flags testname sources (sprintf "%s.err" testname)
 
         // %FSDIFF% %testname%.err %testname%.bsl > %testname%.diff
         let! testnameDiff = fsdiff (sprintf "%s.err" testname) (sprintf "%s.bsl" testname)
@@ -145,7 +138,7 @@ let internal singleNegTest' (cfg: TestConfig) workDir testname = processor {
         log "Good, output %s.err matched %s.bsl" testname testname
 
         // "%FSC%" %fsc_flags% --test:ContinueAfterParseFailure --vserrors --warnaserror --nologo --maxerrors:10000 -a -o:%testname%.dll  %sources% 2> %testname%.vserr
-        do! fsc' (sprintf "%s --test:ContinueAfterParseFailure --vserrors --warnaserror --nologo --maxerrors:10000 -a -o:%s.dll" fsc_flags testname) sources (sprintf "%s.vserr" testname)
+        do! fsc' "%s --test:ContinueAfterParseFailure --vserrors --warnaserror --nologo --maxerrors:10000 -a -o:%s.dll" fsc_flags testname sources (sprintf "%s.vserr" testname)
 
         // @if NOT ERRORLEVEL 1 (
         //     set ERRORMSG=%ERRORMSG% FSC passed unexpectedly for  %sources%;
