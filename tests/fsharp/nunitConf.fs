@@ -92,7 +92,7 @@ let suiteHelpers = lazy (
     |> function Success x -> x | Failure err -> failwith (sprintf "Error %A" err)
 )
 
-[<AttributeUsage(AttributeTargets.Method ||| AttributeTargets.Class ||| AttributeTargets.Interface ||| AttributeTargets.Assembly, AllowMultiple = true)>]
+[<AttributeUsage(AttributeTargets.Assembly)>]
 type public InitializeSuiteAttribute () =
     inherit Attribute()
 
