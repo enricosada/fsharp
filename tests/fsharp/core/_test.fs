@@ -717,3 +717,58 @@ module Unicode =
         // call %~d0%~p0..\..\single-test-run.bat
         do! SingleTestRun.singleTestRun cfg dir p
         }) 
+
+module InternalsVisible =
+
+    let testData = [ (new TestCaseData()) |> setTestDataInfo "internalsvisible" ]
+
+    [<Test; TestCaseSource("testData")>]
+    let internalsvisible () = check  (processor {
+        let { Directory = dir; Config = cfg } = testContext ()
+
+        let exec p = Command.exec dir cfg.EnvironmentVariables { Output = Inherit; Input = None; } p >> checkResult
+        let fsc = Printf.ksprintf (Commands.fsc exec cfg.FSC)
+        let peverify = Commands.peverify exec cfg.PEVERIFY
+        let csc = Printf.ksprintf (Commands.csc exec cfg.CSC)
+        let clix = exec
+        let fsc_flags = cfg.fsc_flags
+
+        // REM Test internals visible
+
+        // echo == Compiling F# Library
+        log "== Compiling F# Library"
+        // "%FSC%" %fsc_flags% --version:1.2.3 --keyfile:key.snk -a --optimize -o:library.dll library.fsi library.fs
+        do! fsc "%s --version:1.2.3 --keyfile:key.snk -a --optimize -o:library.dll" fsc_flags ["library.fsi"; "library.fs"]
+
+        // echo == Verifying F# Library
+        log "== Verifying F# Library"
+
+        // "%PEVERIFY%" library.dll
+        do! peverify "library.dll"
+
+        // echo == Compiling C# Library
+        log "== Compiling C# Library"
+        // %CSC% /target:library /keyfile:key.snk /out:librarycs.dll librarycs.cs
+        do! csc "/target:library /keyfile:key.snk /out:librarycs.dll" ["librarycs.cs"]
+
+        // echo == Verifying C# Library
+        log "== Verifying C# Library"
+        // "%PEVERIFY%" librarycs.dll
+        do! peverify "librarycs.dll"
+
+        // echo == Compiling F# main referencing C# and F# libraries
+        log "== Compiling F# main referencing C# and F# libraries"
+        // "%FSC%" %fsc_flags% --version:1.2.3 --keyfile:key.snk --optimize -r:library.dll -r:librarycs.dll -o:main.exe main.fs
+        do! fsc "%s --version:1.2.3 --keyfile:key.snk --optimize -r:library.dll -r:librarycs.dll -o:main.exe" fsc_flags ["main.fs"]
+
+        // echo == Verifying F# main
+        log "== Verifying F# main"
+        // "%PEVERIFY%" main.exe
+        do! peverify "main.exe"
+
+        // echo == Run F# main. Quick test!
+        log "== Run F# main. Quick test!"
+        // main.exe
+        do! clix ("."/"main.exe") ""
+        }) 
+

@@ -31,3 +31,4 @@ core/unicode/kanji-unicode-*.dll
 core/unicode/kanji-unicode-*.pdb
 core/unicode/out?.txt
 
+core/internalsvisible/main.exe
