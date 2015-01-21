@@ -42,6 +42,21 @@ module Apporder =
         do! SingleTestRun.singleTestRun cfg dir p
         })
 
+[<Category("wip")>]
+module Array = 
+    let permutations =
+        FSharpTestSuite.allPermutation
+        |> List.map (fun p -> (new TestCaseData (p)).SetCategory(sprintf "%A" p) |> setTestDataInfo "array")
+
+    [<Test; TestCaseSource("permutations")>]
+    let array p = check  (processor {
+        let { Directory = dir; Config = cfg } = testContext ()
+        
+        do! SingleTestBuild.singleTestBuild cfg dir p
+        
+        do! SingleTestRun.singleTestRun cfg dir p
+        })
+
 module Attributes = 
     let permutations =
         FSharpTestSuite.allPermutation
@@ -68,6 +83,69 @@ module Comprehensions =
         do! SingleTestBuild.singleTestBuild cfg dir p
         
         do! SingleTestRun.singleTestRun cfg dir p
+        })
+
+[<Category("wip")>]
+module Control = 
+    let permutations = 
+        FSharpTestSuite.allPermutation
+        |> List.map (fun p -> (new TestCaseData (p)).SetCategory(sprintf "%A" p) |> setTestDataInfo "control")
+
+    [<Test; TestCaseSource("permutations")>]
+    let control p = check  (processor {
+        let { Directory = dir; Config = cfg } = testContext ()
+        
+        do! SingleTestBuild.singleTestBuild cfg dir p
+        
+        do! SingleTestRun.singleTestRun cfg dir p
+        })
+
+    [<Test; TestCaseSource("permutations")>]
+    let ``control --tailcalls`` p = check  (processor {
+        let { Directory = dir; Config = cfg } = testContext ()
+        
+        do! SingleTestBuild.singleTestBuild cfg dir p
+        
+        do! SingleTestRun.singleTestRun {cfg with fsi_flags = " --tailcalls" } dir p
+        })
+
+[<Category("wip")>]
+module ControlChamenos =
+    let permutations = 
+        FSharpTestSuite.allPermutation
+        |> List.map (fun p -> (new TestCaseData (p)).SetCategory(sprintf "%A" p) |> setTestDataInfo "controlChamenos")
+
+    [<Test; TestCaseSource("permutations")>]
+    let controlChamenos p = check  (processor {
+        let { Directory = dir; Config = cfg } = testContext ()
+        
+        do! SingleTestBuild.singleTestBuild cfg dir p
+        
+        do! SingleTestRun.singleTestRun { cfg with fsi_flags = " --tailcalls" }  dir p
+        })
+
+[<Category("wip")>]
+module ControlMailbox =
+    let permutations = 
+        FSharpTestSuite.allPermutation
+        |> List.map (fun p -> (new TestCaseData (p)).SetCategory(sprintf "%A" p) |> setTestDataInfo "controlMailbox")
+
+    [<Test; TestCaseSource("permutations")>]
+    let controlMailbox p = check  (processor {
+        let { Directory = dir; Config = cfg } = testContext ()
+        
+        do! SingleTestBuild.singleTestBuild cfg dir p
+        
+        do! SingleTestRun.singleTestRun cfg  dir p
+        })
+
+    [<Test; TestCaseSource("permutations")>]
+    let ``controlMailbox --tailcalls`` p = check  (processor {
+        let { Directory = dir; Config = cfg } = testContext ()
+        
+        do! SingleTestBuild.singleTestBuild cfg dir p
+        
+        do! SingleTestRun.singleTestRun { cfg with fsi_flags = " --tailcalls" }  dir p
         })
 
 module ControlWpf = 
@@ -771,4 +849,5 @@ module InternalsVisible =
         // main.exe
         do! clix ("."/"main.exe") ""
         }) 
+
 
