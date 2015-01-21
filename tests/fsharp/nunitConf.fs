@@ -277,4 +277,28 @@ module Command =
 
         { RedirectOutput = None; RedirectError = None; RedirectInput = None }
         |> (outF (inF exec))
+
+
+
+(*
+
+let d suite name =
+    let dir = Path.Combine(__SOURCE_DIRECTORY__, suite, name) |> Path.GetFullPath
+    let entries = 
+        Directory.GetFileSystemEntries(dir)
+        //|> Seq.filter (fun s -> not <| (Path.GetExtension(s) = ".bat"))
+        |> Seq.toList
+
+    entries
+    |> List.map (Path.GetFileName)
+    |> List.map (sprintf """    <None Include="core\%s\%s" />""" name)
+
+let all suite = 
+    Directory.GetDirectories(Path.Combine(__SOURCE_DIRECTORY__, suite))
+    |> Seq.map Path.GetFileName
+    |> List.ofSeq
+
+all "core" |> List.collect (d "core") |> List.toSeq |> String.concat Environment.NewLine |> System.Windows.Forms.Clipboard.SetText
+
+*)
     
